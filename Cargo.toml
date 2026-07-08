@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["crates/calcumaker-wasm"]
+
+[profile.release]
+opt-level = "s"   # size-tuned wasm; GMP/MPFR do the heavy lifting anyway
+lto = true

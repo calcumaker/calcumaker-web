@@ -1,0 +1,4 @@
+[toolchain]
+# The Rust side of the calculator compiles to WASI preview 1; GMP/MPFR are
+# cross-built with wasi-sdk and linked as static archives (see third_party/).
+targets = ["wasm32-wasip1"]

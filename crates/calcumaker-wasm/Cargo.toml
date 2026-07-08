@@ -1,0 +1,14 @@
+[package]
+name = "calcumaker-wasm"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+description = "Thin WebAssembly (WASI) I/O binding around calcumaker-core — the browser emulator's engine. Like calcumaker-emu, but the terminal is a canvas."
+
+[lib]
+# cdylib so the final wasm links the wasi-built GMP/MPFR archives (build.rs).
+crate-type = ["cdylib"]
+
+[dependencies]
+# The REAL engine — path deps into the calcumaker repo. Core stays untouched.
+calcumaker-core = { path = "../../../calcumaker/firmware/calcumaker-core" }
