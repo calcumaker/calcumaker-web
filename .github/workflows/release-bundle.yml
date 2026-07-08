@@ -1,0 +1,162 @@
+name: release-bundle
+
+# Builds the fully client-side dist, verifies it, and publishes a portable
+# release bundle (stable-named tarball + sha256 + provenance) that a separate
+# publisher can pull in. See README "Publish to an external site".
+#
+# The wasm is built from a path-dependency on the sibling `calcumaker` repo plus
+# a wasi-sdk cross-build of GMP/MPFR/MPC, so this checks out BOTH repos as
+# siblings and caches the expensive C build.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      calcumaker_ref:
+        description: "Ref of calcumaker/calcumaker to build against (default branch if empty)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write # create/update releases
+
+env:
+  WASI_SDK_VERSION: "33.0"
+  WASI_SDK_PATH: ${{ github.workspace }}/wasi-sdk-33.0-x86_64-linux
+
+defaults:
+  run:
+    working-directory: calcumaker-web
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout calcumaker-web
+        uses: actions/checkout@v4
+        with:
+          path: calcumaker-web
+
+      - name: Checkout calcumaker (sibling — engine source for the path dep)
+        uses: actions/checkout@v4
+        with:
+          repository: calcumaker/calcumaker
+          ref: ${{ github.event.inputs.calcumaker_ref }}
+          # Same-org private repos need a PAT/deploy-key secret; falls back to
+          # the job token when the repo is public / accessible.
+          token: ${{ secrets.CALCUMAKER_REPO_TOKEN || github.token }}
+          path: calcumaker
+
+      - name: System deps (m4 is required to build GMP)
+        run: sudo apt-get update && sudo apt-get install -y m4
+
+      - name: Rust toolchain (+ wasm32-wasip1)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+
+      - name: Cache cargo + target
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: calcumaker-web
+
+      - name: Node toolchain
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache wasi-sdk
+        id: wasi-sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WASI_SDK_PATH }}
+          key: wasi-sdk-${{ env.WASI_SDK_VERSION }}-x86_64-linux
+
+      - name: Install wasi-sdk
+        if: steps.wasi-sdk-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          curl -fL -o wasi-sdk.tar.gz \
+            "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-33/wasi-sdk-${WASI_SDK_VERSION}-x86_64-linux.tar.gz"
+          tar xzf wasi-sdk.tar.gz
+
+      - name: Cache cross-built GMP/MPFR/MPC (vendor/wasi)
+        id: vendor-cache
+        uses: actions/cache@v4
+        with:
+          path: calcumaker-web/vendor/wasi
+          # Rebuild only when the recipe changes (versions are pinned inside it).
+          key: vendor-wasi-${{ hashFiles('calcumaker-web/third_party/build-gmp-mpfr-wasi.sh') }}
+
+      - name: Cross-build GMP/MPFR/MPC for wasm
+        if: steps.vendor-cache.outputs.cache-hit != 'true'
+        run: ./third_party/build-gmp-mpfr-wasi.sh
+
+      - name: Build engine wasm
+        run: ./scripts/build-wasm.sh
+
+      - name: Smoke test (engine under Node WASI)
+        run: node scripts/smoke.mjs
+
+      - name: Install web deps
+        working-directory: calcumaker-web/web
+        run: npm ci
+
+      - name: Build static dist
+        working-directory: calcumaker-web/web
+        run: npm run build
+
+      - name: Browser verification (Playwright)
+        working-directory: calcumaker-web/web
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/verify-browser.mjs
+
+      - name: Assemble release bundle (stable names + provenance)
+        id: bundle
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p bundle
+          WEB_SHA=$(git -C calcumaker-web rev-parse --short HEAD)
+          CALC_SHA=$(git -C calcumaker rev-parse --short HEAD)
+          tar -C calcumaker-web/web/dist -czf bundle/calcumaker-web-dist.tar.gz .
+          ( cd calcumaker-web/web/dist && zip -qr "$GITHUB_WORKSPACE/bundle/calcumaker-web-dist.zip" . )
+          cat > bundle/build-info.json <<JSON
+          {
+            "web_sha": "${WEB_SHA}",
+            "calcumaker_sha": "${CALC_SHA}",
+            "ref": "${{ github.ref_name }}",
+            "run_id": "${{ github.run_id }}",
+            "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          ( cd bundle && sha256sum calcumaker-web-dist.tar.gz calcumaker-web-dist.zip build-info.json > SHA256SUMS )
+          echo "web_sha=${WEB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calcumaker-web-dist-${{ steps.bundle.outputs.web_sha }}
+          path: bundle/
+          if-no-files-found: error
+
+      # Tagged build -> a permanent, versioned release the publisher pins to.
+      - name: Release (tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: bundle/*
+          generate_release_notes: true
+
+      # main build -> a rolling "latest" prerelease with a stable download URL:
+      #   https://github.com/calcumaker/calcumaker-web/releases/download/latest/calcumaker-web-dist.tar.gz
+      - name: Release (rolling latest)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          prerelease: true
+          files: bundle/*

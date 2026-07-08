@@ -84,14 +84,41 @@ at `web/dist/` — no build config needed since the bundle is prebuilt.
 npx gh-pages -d web/dist            # or: git subtree / a worktree push
 ```
 
-**GitHub Actions → Pages (automated).** One wrinkle worth knowing up front: the
-wasm is built from a **path dependency on the sibling `../calcumaker` repo** plus
-a wasi-sdk cross-build of GMP/MPFR/MPC. So a CI runner must (a) check out *both*
-repos side by side (or make `calcumaker` a submodule) and (b) install wasi-sdk
-and run `third_party/build-gmp-mpfr-wasi.sh` — cache the `vendor/wasi/` output so
-it isn't rebuilt every run. Given that, the pipeline is: checkout both →
-build-dist.sh → upload `web/dist` as the Pages artifact. (Not wired up yet — see
-PLAN.md; the submodule-vs-two-checkout call is the prerequisite.)
+**GitHub Actions → release bundle (automated, wired up).**
+[`.github/workflows/release-bundle.yml`](.github/workflows/release-bundle.yml)
+builds + verifies the dist and publishes a **release bundle** a downstream
+publisher pulls in — so building is decoupled from deploying. It checks out both
+`calcumaker-web` and the sibling `calcumaker` (engine source for the path dep),
+caches the wasi-sdk + the `vendor/wasi/` C cross-build, runs the Node smoke +
+Playwright checks, then attaches to a release:
+
+- **push to `main`** → rolling **`latest`** prerelease (stable download URL).
+- **tag `v*`** → a permanent, versioned release to pin to.
+
+Each release carries `calcumaker-web-dist.tar.gz`, `.zip`, `build-info.json`
+(web + engine commit SHAs, build time), and `SHA256SUMS`.
+
+> Setup notes: cross-repo checkout of a **private** `calcumaker/calcumaker` needs
+> a PAT/deploy-key in the `CALCUMAKER_REPO_TOKEN` secret (public repos use the
+> job token automatically). `workflow_dispatch` takes a `calcumaker_ref` input to
+> build against a specific engine ref.
+
+### Downstream publisher: pull the bundle
+
+Another site/pipeline consumes the bundle from a stable location — no build
+needed:
+
+```sh
+# newest main build (rolling), or swap `latest` for a version tag like v0.1.0
+gh release download latest -R calcumaker/calcumaker-web \
+  -p 'calcumaker-web-dist.tar.gz' -p 'SHA256SUMS'
+sha256sum -c SHA256SUMS --ignore-missing
+mkdir -p site && tar -C site -xzf calcumaker-web-dist.tar.gz
+# `site/` is the servable tree (index.html + assets/) — deploy it as-is.
+```
+
+Or fetch the stable asset URL directly (CI without `gh`):
+`https://github.com/calcumaker/calcumaker-web/releases/download/latest/calcumaker-web-dist.tar.gz`
 
 **Hosting requirements are the same everywhere** — see the list above (serve
 `.wasm` as `application/wasm`; no COOP/COEP; relative base).

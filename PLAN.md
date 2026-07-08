@@ -158,7 +158,12 @@ this as a switchable display module, faithful to the hardware:
 - **Copy-X**: click the status line to copy the full X value.
 
 **Deploy:** produce the static `dist/` and document hosting; provider deferred
-(chosen: "just build the static dist"). All client-side.
+(chosen: "just build the static dist"). All client-side. `scripts/{build-dist,
+package-dist}.sh` produce the bundle locally. **CI wired**
+(`.github/workflows/release-bundle.yml`): two-checkout (calcumaker-web +
+sibling calcumaker), cached wasi-sdk + `vendor/wasi/`, smoke + Playwright gates,
+publishes a **release bundle** (rolling `latest` on main, versioned on `v*` tags)
+that a downstream publisher pulls — building decoupled from deploying.
 
 ### Backlog (post-M5)
 - Optional WebGL bloom/CRT layer over the SVG 7-seg.
