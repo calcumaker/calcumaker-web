@@ -35,12 +35,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout calcumaker-web
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: calcumaker-web
 
       - name: Checkout calcumaker (sibling — engine source for the path dep)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: calcumaker/calcumaker
           ref: ${{ github.event.inputs.calcumaker_ref }}
@@ -63,13 +63,13 @@ jobs:
           workspaces: calcumaker-web
 
       - name: Node toolchain
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Cache wasi-sdk
         id: wasi-sdk-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.WASI_SDK_PATH }}
           key: wasi-sdk-${{ env.WASI_SDK_VERSION }}-x86_64-linux
@@ -84,7 +84,7 @@ jobs:
 
       - name: Cache cross-built GMP/MPFR/MPC (vendor/wasi)
         id: vendor-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: calcumaker-web/vendor/wasi
           # Rebuild only when the recipe changes (versions are pinned inside it).
@@ -136,7 +136,7 @@ jobs:
           echo "web_sha=${WEB_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: calcumaker-web-dist-${{ steps.bundle.outputs.web_sha }}
           path: bundle/
@@ -145,7 +145,7 @@ jobs:
       # Tagged build -> a permanent, versioned release the publisher pins to.
       - name: Release (tag)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: bundle/*
           generate_release_notes: true
@@ -154,7 +154,7 @@ jobs:
       #   https://github.com/calcumaker/calcumaker-web/releases/download/latest/calcumaker-web-dist.tar.gz
       - name: Release (rolling latest)
         if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: latest
           name: Latest build
