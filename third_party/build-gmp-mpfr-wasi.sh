@@ -34,12 +34,16 @@ export LDFLAGS="-lwasi-emulated-signal"
 
 fetch() { # url
   local f="$WORK/$(basename "$1")"
-  [ -f "$f" ] || curl -fL "$1" -o "$f"
+  # Robust download: resume, retry, connect timeout — CI/mirror flakiness safe.
+  [ -f "$f" ] || curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
+    --connect-timeout 30 -C - "$1" -o "$f"
   tar -C "$WORK" -xf "$f"
 }
 
 echo ">> GMP $GMP_VERSION"
-fetch "https://gmplib.org/download/gmp/gmp-$GMP_VERSION.tar.xz"
+# GNU mirror (ftp.gnu.org) rather than gmplib.org — the latter is intermittently
+# slow/flaky and timed out in CI.
+fetch "https://ftp.gnu.org/gnu/gmp/gmp-$GMP_VERSION.tar.xz"
 ( cd "$WORK/gmp-$GMP_VERSION"
   ./configure --host=wasm32-wasi --prefix="$PREFIX" \
     --disable-shared --enable-static \
@@ -47,7 +51,7 @@ fetch "https://gmplib.org/download/gmp/gmp-$GMP_VERSION.tar.xz"
   make -j"$(nproc)" && make install )
 
 echo ">> MPFR $MPFR_VERSION"
-fetch "https://www.mpfr.org/mpfr-$MPFR_VERSION/mpfr-$MPFR_VERSION.tar.xz"
+fetch "https://ftp.gnu.org/gnu/mpfr/mpfr-$MPFR_VERSION.tar.xz"
 ( cd "$WORK/mpfr-$MPFR_VERSION"
   ./configure --host=wasm32-wasi --prefix="$PREFIX" \
     --with-gmp="$PREFIX" --disable-shared --enable-static
