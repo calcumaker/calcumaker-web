@@ -20,9 +20,39 @@ WASI_SDK_PATH=/opt/wasi-sdk ./third_party/build-gmp-mpfr-wasi.sh
 # 2. Build the engine to wasm and drop it into the web app
 ./scripts/build-wasm.sh
 
-# 3. Run the frontend
+# 3. Run the frontend (dev server)
 cd web && npm install && npm run dev
 ```
+
+## Ship a static build
+
+The app is 100% client-side — no server, no runtime network. Produce the bundle
+in one command (engine wasm + typecheck + Vite build):
+
+```sh
+./scripts/build-dist.sh          # -> web/dist/
+```
+
+`web/dist/` is self-contained (`index.html`, hashed `.js`/`.css`, and the
+`.wasm`). Copy it to any static host. Preview it exactly as shipped:
+
+```sh
+cd web && npm run preview        # or: python3 -m http.server -d web/dist 8080
+```
+
+**Hosting requirements — minimal:**
+- Serve `.wasm` as `Content-Type: application/wasm` (needed for streaming
+  instantiation). GitHub/GitLab Pages, Netlify, Cloudflare Pages, Vercel, nginx,
+  Caddy, and `vite preview` all do this out of the box.
+- **No** cross-origin-isolation headers (COOP/COEP) required — the engine is
+  single-threaded and uses no `SharedArrayBuffer`.
+- Works from a subpath (e.g. project Pages at `/calcumaker-web/`): Vite `base` is
+  `"./"`, so all asset URLs are relative. No SPA/rewrite rules needed — it's a
+  single page.
+
+To rebuild only after an engine (`calcumaker-core`) change, re-run
+`./scripts/build-wasm.sh` then `(cd web && npm run build)`; `build-dist.sh` does
+both.
 
 ## Stack
 
