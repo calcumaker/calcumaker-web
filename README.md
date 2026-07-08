@@ -120,6 +120,15 @@ mkdir -p site && tar -C site -xzf calcumaker-web-dist.tar.gz
 Or fetch the stable asset URL directly (CI without `gh`):
 `https://github.com/calcumaker/calcumaker-web/releases/download/latest/calcumaker-web-dist.tar.gz`
 
+**Self-hosted docroot.** [`scripts/deploy-release.sh`](scripts/deploy-release.sh)
+productionizes that recipe for an nginx-style host: it pulls the release,
+verifies the SHA256, extracts to `releases/<web_sha>-<core_sha>/`, and flips a
+`current` symlink atomically (`rename`), keeping the last `$CALCUMAKER_WEB_KEEP`
+for rollback. Idempotent (re-runs no-op), lock-guarded against overlapping
+webhook/cron triggers. Point nginx `root` at `$CALCUMAKER_WEB_ROOT/current` and
+run it from a webhook or cron; env vars (`CALCUMAKER_WEB_ROOT/REPO/TAG/KEEP`)
+override the defaults.
+
 **Hosting requirements are the same everywhere** — see the list above (serve
 `.wasm` as `application/wasm`; no COOP/COEP; relative base).
 
