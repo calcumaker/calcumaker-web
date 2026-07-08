@@ -116,6 +116,20 @@ pub unsafe extern "C" fn cm_aux_line(app: *mut App, idx: usize, out: *mut u8, ca
     write_str(s, out, cap)
 }
 
+/// Write display text row `idx` (0..DISPLAY_ROWS) into `out`/`cap` as ASCII;
+/// returns the byte length. This is what the RGB dot-matrix module renders (via
+/// its 5×7 font) — the alternate display feed, distinct from the 7-seg bytes.
+///
+/// # Safety
+/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn cm_text_row(app: *mut App, idx: usize, out: *mut u8, cap: usize) -> usize {
+    let Some(app) = app.as_ref() else { return 0 };
+    let rows = app.text_rows();
+    let Some(s) = rows.get(idx) else { return 0 };
+    write_str(s, out, cap)
+}
+
 /// Write the untruncated X register into `out`/`cap`; returns the byte length.
 ///
 /// # Safety

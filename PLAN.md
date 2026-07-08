@@ -123,10 +123,46 @@ promote that to a git submodule — noted, not needed for dev.
 - Verified end-to-end in Chromium (`web/scripts/verify-browser.mjs`): 50 keys,
   3 rows, `2 ENTER 3 +` → `x = 5`, personality swap, screenshots per skin.
 
-### M5 — Polish & deploy  (next)
-- Responsive faceplate for narrow screens, copy-X, keyboard-help overlay,
-  precision/OLED settings, optional WebGL bloom layer.
-- Static build; pick a host (GitHub Pages / Cloudflare Pages). All client-side.
+### M5 — RGB dot-matrix module + polish  ✅ DONE (2026-07-08)
+
+Implemented as below and verified end-to-end in Chromium (13 checks green):
+matrix module draws lit dots, 4 palettes screenshot, help overlay opens/closes,
+7-seg still green. Upstream drift handled: `gmp-mpfr-nostd` gained **MPC**
+(complex) → cross-built `libmpc.a` for wasm and linked it; a new **15C**
+personality is picked up automatically by the dynamic personality loading.
+
+
+**Headline: the second display module.** The calcumaker hardware has an
+*interchangeable* alternate display — `calcumaker-matrix`, a **96×24 RGB
+addressable-LED dot matrix** (2304× WS2812, laid out 8×8 cluster → 12/row →
+3 rows). Its RP2040 firmware renders the same text rows into a framebuffer with a
+**5×7 font on a 6 px pitch** (16 chars/row × 3 rows = 96×24). The web app adds
+this as a switchable display module, faithful to the hardware:
+
+- **Engine feed:** the matrix renders from `App::text_rows()` (ASCII), not the
+  7-seg bytes. Add `cm_text_row` to the binding.
+- **Font:** port `calcumaker-matrix-fw/src/font.rs` `glyph()` verbatim (5 cols ×
+  7-bit column bitmaps, bit0 = top) so the web dots match the hardware pixel for
+  pixel. Same blit: 6 px pitch, clip at 96 px.
+- **Render:** a `<canvas>` grid of 2304 dots (canvas suits a pixel array + glow
+  better than 2304 SVG nodes). Per-stack-row RGB tints mirroring the firmware's
+  `tint` (row0 green / row1 amber / row2 blue), brightened for a screen; plus a
+  few color schemes (per-row RGB, amber, green, white).
+- **UX:** a **Display module** switch (7-Segment ↔ RGB Matrix) — the two are
+  interchangeable hardware, so the toggle mirrors that. Seg skins apply to 7-seg;
+  matrix color schemes apply to the matrix.
+
+**Polish:**
+- Responsive faceplate for narrow / mobile widths (keypad + screen scale down).
+- `?` **keyboard-help overlay** (host-key → key map, mirroring the emu's help).
+- **Copy-X**: click the status line to copy the full X value.
+
+**Deploy:** produce the static `dist/` and document hosting; provider deferred
+(chosen: "just build the static dist"). All client-side.
+
+### Backlog (post-M5)
+- Optional WebGL bloom/CRT layer over the SVG 7-seg.
+- Precision / aux-OLED settings panel; scrolling for values wider than the row.
 
 ## Open items to confirm as we go
 - GMP/MPFR wasi-sdk build flags (M0 will settle these empirically).

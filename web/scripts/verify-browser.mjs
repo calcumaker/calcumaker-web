@@ -56,7 +56,7 @@ await page.locator(".perso button", { hasText: "SCI" }).click();
 ok("SCI personality active", (await page.locator(".perso button.active", { hasText: "SCI" }).count()) === 1);
 await page.locator(".perso button", { hasText: "16C" }).click();
 
-// Screenshot every skin.
+// Screenshot every 7-seg skin.
 await mkdir(SHOTS, { recursive: true });
 const skins = await page.locator(".skin-select option").evaluateAll((os) => os.map((o) => o.value));
 for (const s of skins) {
@@ -64,7 +64,33 @@ for (const s of skins) {
   await page.waitForTimeout(120);
   await page.locator("#faceplate").screenshot({ path: join(SHOTS, `${s}.png`) });
 }
-ok(`screenshot each skin (${skins.length})`, skins.length === 5);
+ok(`screenshot each 7-seg skin (${skins.length})`, skins.length === 5);
+
+// Switch to the RGB dot-matrix module and confirm it draws lit pixels.
+await page.locator(".module button", { hasText: "Matrix" }).click();
+await page.waitForTimeout(150);
+ok("matrix canvas visible", await page.locator(".matrix canvas").isVisible());
+const brightPixels = await page.locator(".matrix canvas").evaluate((c) => {
+  const ctx = c.getContext("2d");
+  const { data } = ctx.getImageData(0, 0, c.width, c.height);
+  let n = 0;
+  for (let i = 0; i < data.length; i += 4) if (data[i] > 120 || data[i + 1] > 120 || data[i + 2] > 120) n++;
+  return n;
+});
+ok(`matrix has lit dots (${brightPixels}px)`, brightPixels > 50);
+const palettes = await page.locator(".skin-select option").evaluateAll((os) => os.map((o) => o.value));
+for (const p of palettes) {
+  await page.selectOption(".skin-select", p);
+  await page.waitForTimeout(120);
+  await page.locator("#faceplate").screenshot({ path: join(SHOTS, `matrix-${p}.png`) });
+}
+ok(`screenshot each matrix palette (${palettes.length})`, palettes.length === 4);
+
+// Help overlay via '?'.
+await page.keyboard.press("Shift+Slash");
+ok("help overlay opens on ?", await page.locator(".overlay .overlay-card").isVisible());
+await page.keyboard.press("Escape");
+ok("help overlay closes on Esc", !(await page.locator(".overlay").isVisible()));
 
 ok(`no page errors (${errors.length})`, errors.length === 0);
 if (errors.length) console.log(errors.join("\n"));

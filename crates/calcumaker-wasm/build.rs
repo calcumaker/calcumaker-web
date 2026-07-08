@@ -18,7 +18,8 @@ fn main() {
     let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let lib = format!("{manifest}/../../vendor/wasi/lib");
     println!("cargo:rustc-link-search=native={lib}");
-    // mpfr depends on gmp -> list mpfr first.
+    // Dependency order: mpc -> mpfr -> gmp (each needs the next).
+    println!("cargo:rustc-link-lib=static=mpc");
     println!("cargo:rustc-link-lib=static=mpfr");
     println!("cargo:rustc-link-lib=static=gmp");
     // GMP's errno.o calls raise(SIGFPE) on divide-by-zero; provide it from

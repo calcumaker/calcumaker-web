@@ -19,6 +19,7 @@ set -euo pipefail
 : "${WASI_SDK_PATH:?set WASI_SDK_PATH to your wasi-sdk install (e.g. /opt/wasi-sdk)}"
 GMP_VERSION="${GMP_VERSION:-6.3.0}"
 MPFR_VERSION="${MPFR_VERSION:-4.2.1}"
+MPC_VERSION="${MPC_VERSION:-1.3.1}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PREFIX="$ROOT/vendor/wasi"
@@ -52,8 +53,17 @@ fetch "https://www.mpfr.org/mpfr-$MPFR_VERSION/mpfr-$MPFR_VERSION.tar.xz"
     --with-gmp="$PREFIX" --disable-shared --enable-static
   make -j"$(nproc)" && make install )
 
+echo ">> MPC $MPC_VERSION"
+# gmp-mpfr-nostd gained arbitrary-precision complex (mpc), which layers on
+# MPFR + GMP — so the wasm link needs libmpc.a too.
+fetch "https://ftp.gnu.org/gnu/mpc/mpc-$MPC_VERSION.tar.gz"
+( cd "$WORK/mpc-$MPC_VERSION"
+  ./configure --host=wasm32-wasi --prefix="$PREFIX" \
+    --with-gmp="$PREFIX" --with-mpfr="$PREFIX" --disable-shared --enable-static
+  make -j"$(nproc)" && make install )
+
 # GMP's errno.o references raise(); vendor wasi's emulated-signal archive so the
 # final wasm link (crates/calcumaker-wasm/build.rs) can resolve it.
 cp "$WASI_SDK_PATH/share/wasi-sysroot/lib/wasm32-wasip1/libwasi-emulated-signal.a" "$PREFIX/lib/"
 
-echo ">> done: $PREFIX/lib/{libgmp,libmpfr,libwasi-emulated-signal}.a"
+echo ">> done: $PREFIX/lib/{libgmp,libmpfr,libmpc,libwasi-emulated-signal}.a"

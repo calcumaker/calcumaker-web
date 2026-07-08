@@ -1,9 +1,11 @@
 # Calcumaker Web
 
 A **fully client-side** browser emulator of [Calcumaker 16](../calcumaker) —
-running the *real* `calcumaker-core` engine (RPN + GNU MP + MPFR) compiled to
-WebAssembly via **WASI**, with the multi-row 7-segment display rendered in
-**SVG** and swappable skins (LED / VFD / LCD).
+running the *real* `calcumaker-core` engine (RPN + GNU MP + MPFR + MPC) compiled
+to WebAssembly via **WASI**. Two interchangeable display modules mirror the
+hardware: the multi-row **7-segment** display (SVG, LED / VFD / LCD skins) and
+the **96×24 RGB dot-matrix** module (canvas, 5×7 font ported from the matrix
+firmware).
 
 It is a **thin I/O binding around `calcumaker-core`**, exactly like
 `calcumaker-emu` — no calculator logic lives here. See **[PLAN.md](PLAN.md)** for
@@ -26,7 +28,7 @@ cd web && npm install && npm run dev
 
 | Layer            | Choice                                             |
 |------------------|----------------------------------------------------|
-| Math → WASM      | GMP + MPFR cross-built with **wasi-sdk**, static   |
+| Math → WASM      | GMP + MPFR + MPC cross-built with **wasi-sdk**, static |
 | Engine           | `calcumaker-core` → `wasm32-wasip1` (path dep)     |
 | Browser runtime  | `@bjorn3/browser_wasi_shim` (pure JS, no server)   |
 | Display          | **SVG** 7-seg from real TM1640 bytes + CSS skins   |

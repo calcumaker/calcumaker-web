@@ -23,6 +23,7 @@ interface Exports {
   cm_seg_rows(app: number, out: number): void;
   cm_shift(app: number): number;
   cm_aux_line(app: number, idx: number, out: number, cap: number): number;
+  cm_text_row(app: number, idx: number, out: number, cap: number): number;
   cm_x_full(app: number, out: number, cap: number): number;
   cm_message(app: number, out: number, cap: number): number;
   cm_num_personalities(): number;
@@ -78,6 +79,9 @@ export class Calcumaker {
   auxLine(i: number): string { return this.readStr((o, c) => this.ex.cm_aux_line(this.app, i, o, c)); }
   xFull(): string { return this.readStr((o, c) => this.ex.cm_x_full(this.app, o, c)); }
   message(): string { return this.readStr((o, c) => this.ex.cm_message(this.app, o, c)); }
+
+  /** ASCII text for display row `i` — what the RGB dot-matrix module renders. */
+  textRow(i: number): string { return this.readStr((o, c) => this.ex.cm_text_row(this.app, i, o, c)); }
 
   // Personalities (16C / SCI / FIN) and key legends — straight from the engine's
   // keys.rs tables, so the faceplate never drifts from the real keymap.

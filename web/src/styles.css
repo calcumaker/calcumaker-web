@@ -58,6 +58,11 @@ body {
   background: #2f333a; color: var(--ink); border: 1px solid #000;
   border-radius: 8px; padding: 5px 8px; font-size: 13px;
 }
+.help-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #2f333a; color: var(--ink); border: 1px solid #000; cursor: pointer;
+  font-weight: 700;
+}
 
 /* ---- screen ------------------------------------------------------------ */
 .screen {
@@ -69,6 +74,13 @@ body {
 }
 .display { display: flex; flex-direction: column; gap: 6px; }
 .seg-row { display: block; height: 64px; }
+
+/* RGB dot-matrix module */
+.matrix canvas { display: block; width: 100%; height: auto; image-rendering: auto; }
+#faceplate[data-module="seg"] .matrix { display: none; }
+#faceplate[data-module="matrix"] .display { display: none; }
+#faceplate[data-module="matrix"] .screen { background: #05070a; }
+#faceplate[data-module="matrix"] .aux { color: #8fb0c8; }
 
 .seg { fill: var(--seg-off); }
 .seg.on {
@@ -87,7 +99,10 @@ body {
 .status {
   color: var(--ink); opacity: .75; font-family: ui-monospace, Menlo, monospace;
   font-size: 13px; min-height: 1.2em; padding: 0 4px; word-break: break-all;
+  cursor: copy;
 }
+.status[data-copied] { color: #5fe08a; opacity: 1; }
+.status[data-copied]::after { content: "  ✓ copied"; }
 
 /* ---- keypad ------------------------------------------------------------ */
 .keypad {
@@ -132,3 +147,33 @@ body {
 #faceplate[data-skin="vfd-cyan"]  { --screen-bg: #02110f; --seg-on: #74f4ff; --seg-off: rgba(116,244,255,.10); --glow: 10px; }
 #faceplate[data-skin="lcd"]       { --screen-bg: #b3bba4; --seg-on: #1b2015; --seg-off: rgba(27,32,21,.12); --glow: 0px; }
 #faceplate[data-skin="lcd"] .aux { color: #1b2015; border-top-color: rgba(0,0,0,.2); }
+/* On the matrix module the 7-seg skin vars don't apply; keep the screen dark. */
+#faceplate[data-module="matrix"][data-skin] { --screen-bg: #05070a; }
+
+/* ---- help overlay ------------------------------------------------------ */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .6);
+  display: grid; place-items: center; z-index: 10;
+}
+.overlay[hidden] { display: none; }
+.overlay-card {
+  background: var(--case); color: var(--ink); border: 1px solid #000;
+  border-radius: 14px; padding: 22px 26px; max-width: 460px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+}
+.overlay-card h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: .06em; }
+.overlay-card ul { margin: 0; padding-left: 18px; line-height: 1.9; font-size: 14px; }
+.overlay-card b { color: var(--gold); }
+.overlay-card p { color: #aab; font-size: 12.5px; margin: 14px 0 0; }
+
+/* ---- responsive -------------------------------------------------------- */
+@media (max-width: 640px) {
+  body { padding: 8px; }
+  #faceplate { padding: 12px; border-radius: 12px; gap: 10px; }
+  .bar { flex-wrap: wrap; gap: 8px; }
+  .annun { margin-left: 0; }
+  .keypad { gap: 4px; }
+  .seg-row { height: 40px; }
+  .face { font-size: 11px; }
+  .leg { font-size: 7px; }
+}
