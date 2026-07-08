@@ -9,7 +9,10 @@
 
 import { WASI, File, OpenFile, ConsoleStdout } from "@bjorn3/browser_wasi_shim";
 
-const SEG_BYTES = 48; // DISPLAY_ROWS(3) * DIGITS_PER_ROW(16) — asserted in Rust
+// Display geometry — mirrors calcumaker_core::seg7 (asserted in the Rust binding).
+export const DISPLAY_ROWS = 3;
+export const DIGITS_PER_ROW = 16;
+const SEG_BYTES = DISPLAY_ROWS * DIGITS_PER_ROW; // 48
 
 interface Exports {
   memory: WebAssembly.Memory;
@@ -22,10 +25,17 @@ interface Exports {
   cm_aux_line(app: number, idx: number, out: number, cap: number): number;
   cm_x_full(app: number, out: number, cap: number): number;
   cm_message(app: number, out: number, cap: number): number;
+  cm_num_personalities(): number;
+  cm_set_keymap(app: number, idx: number): void;
+  cm_keymap_name(app: number, out: number, cap: number): number;
+  cm_key_label(app: number, layer: number, row: number, col: number, out: number, cap: number): number;
   // Shared scratch buffer for byte/string transfers (no allocator exported).
   cm_scratch(): number;
   cm_scratch_cap(): number;
 }
+
+/** Key legend layer: base face, f (gold) shift, g (blue) shift. */
+export type Layer = 0 | 1 | 2;
 
 export type Shift = "none" | "f" | "g";
 
@@ -68,6 +78,15 @@ export class Calcumaker {
   auxLine(i: number): string { return this.readStr((o, c) => this.ex.cm_aux_line(this.app, i, o, c)); }
   xFull(): string { return this.readStr((o, c) => this.ex.cm_x_full(this.app, o, c)); }
   message(): string { return this.readStr((o, c) => this.ex.cm_message(this.app, o, c)); }
+
+  // Personalities (16C / SCI / FIN) and key legends — straight from the engine's
+  // keys.rs tables, so the faceplate never drifts from the real keymap.
+  numPersonalities(): number { return this.ex.cm_num_personalities(); }
+  setKeymap(idx: number) { this.ex.cm_set_keymap(this.app, idx); }
+  keymapName(): string { return this.readStr((o, c) => this.ex.cm_keymap_name(this.app, o, c)); }
+  keyLabel(layer: Layer, row: number, col: number): string {
+    return this.readStr((o, c) => this.ex.cm_key_label(this.app, layer, row, col, o, c));
+  }
 
   private readStr(call: (out: number, cap: number) => number): string {
     const cap = this.scratchCap;

@@ -1,0 +1,134 @@
+:root {
+  --case: #23262b;
+  --case-edge: #14161a;
+  --ink: #e7e9ee;
+  --gold: #f0c25a;
+  --blue: #6ea8ff;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(120% 120% at 50% 0%, #2c3038, #0c0d10 70%);
+  padding: 24px;
+}
+
+/* ---- faceplate --------------------------------------------------------- */
+#faceplate {
+  width: min(980px, 100%);
+  background: linear-gradient(180deg, var(--case), var(--case-edge));
+  border: 1px solid #000;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--ink);
+}
+.brand { display: flex; align-items: baseline; gap: 8px; letter-spacing: .14em; }
+.brand b { font-size: 18px; }
+.brand span { color: var(--gold); font-weight: 700; }
+
+.switch { display: flex; gap: 6px; }
+.switch button {
+  background: #2f333a; color: var(--ink); border: 1px solid #000;
+  border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 13px;
+}
+.switch button.active { background: var(--gold); color: #201a08; font-weight: 700; }
+
+.annun { margin-left: auto; display: flex; gap: 10px; font-weight: 700; }
+.annun span { opacity: .18; transition: opacity .08s; padding: 2px 8px; border-radius: 6px; }
+.annun span:first-child { color: var(--gold); }
+.annun span:last-child { color: var(--blue); }
+.annun span.on { opacity: 1; box-shadow: 0 0 12px currentColor; }
+
+.skin-select {
+  background: #2f333a; color: var(--ink); border: 1px solid #000;
+  border-radius: 8px; padding: 5px 8px; font-size: 13px;
+}
+
+/* ---- screen ------------------------------------------------------------ */
+.screen {
+  background: var(--screen-bg);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid #000;
+  box-shadow: inset 0 3px 16px rgba(0, 0, 0, .7);
+}
+.display { display: flex; flex-direction: column; gap: 6px; }
+.seg-row { display: block; height: 64px; }
+
+.seg { fill: var(--seg-off); }
+.seg.on {
+  fill: var(--seg-on);
+  filter: drop-shadow(0 0 var(--glow) var(--seg-on));
+}
+
+.aux {
+  margin: 10px 0 0; padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, .12);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px; line-height: 1.4; color: var(--seg-on); opacity: .8;
+  min-height: 4.2em; white-space: pre;
+}
+
+.status {
+  color: var(--ink); opacity: .75; font-family: ui-monospace, Menlo, monospace;
+  font-size: 13px; min-height: 1.2em; padding: 0 4px; word-break: break-all;
+}
+
+/* ---- keypad ------------------------------------------------------------ */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 7px;
+}
+.key {
+  position: relative;
+  aspect-ratio: 1 / 1.15;
+  background: linear-gradient(180deg, #34383f, #23262b);
+  border: 1px solid #000;
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 3px;
+  box-shadow: 0 2px 0 #0c0d10, inset 0 1px 0 rgba(255, 255, 255, .07);
+  transition: transform .04s, box-shadow .04s;
+}
+.key:active { transform: translateY(2px); box-shadow: 0 0 0 #0c0d10; }
+.key.blank { visibility: hidden; }
+.key.is-shift .face { color: #201a08; }
+.key.is-shift { background: linear-gradient(180deg, var(--gold), #c99a30); }
+
+.face { font-size: clamp(9px, 1.5vw, 14px); font-weight: 700; line-height: 1; text-align: center; }
+.leg { font-size: clamp(6px, 1vw, 9px); line-height: 1; min-height: 1em; text-align: center; }
+.leg-f { color: var(--gold); }
+.leg-g { color: var(--blue); }
+.leg:empty { min-height: .6em; }
+
+/* Emphasize the active shift layer's legends. */
+.keypad[data-shift="f"] .leg-g, .keypad[data-shift="g"] .leg-f { opacity: .25; }
+.keypad[data-shift="f"] .leg-f { text-shadow: 0 0 8px var(--gold); }
+.keypad[data-shift="g"] .leg-g { text-shadow: 0 0 8px var(--blue); }
+.keypad[data-shift="f"] .face, .keypad[data-shift="g"] .face { opacity: .6; }
+
+/* ---- skins (segment color / glow / screen background) ------------------ */
+#faceplate[data-skin="led-red"]   { --screen-bg: #1a0605; --seg-on: #ff3b30; --seg-off: rgba(255,59,48,.07); --glow: 6px; }
+#faceplate[data-skin="led-green"] { --screen-bg: #04140a; --seg-on: #3dff72; --seg-off: rgba(61,255,114,.07); --glow: 6px; }
+#faceplate[data-skin="led-amber"] { --screen-bg: #150d02; --seg-on: #ffb020; --seg-off: rgba(255,176,32,.07); --glow: 6px; }
+#faceplate[data-skin="vfd-cyan"]  { --screen-bg: #02110f; --seg-on: #74f4ff; --seg-off: rgba(116,244,255,.10); --glow: 10px; }
+#faceplate[data-skin="lcd"]       { --screen-bg: #b3bba4; --seg-on: #1b2015; --seg-off: rgba(27,32,21,.12); --glow: 0px; }
+#faceplate[data-skin="lcd"] .aux { color: #1b2015; border-top-color: rgba(0,0,0,.2); }

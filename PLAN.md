@@ -99,31 +99,33 @@ promote that to a git submodule — noted, not needed for dev.
   GMP `2 ENTER 3 +` → `5`; MPFR `2.0 √` → `1.41421356…` (256-bit, correct).
   **Project proven viable.**
 
-### M1 — Wasm binding crate + TS wrapper
-- Full C-ABI: `cm_new/cm_free`, `cm_press`, `cm_press_key`, `cm_seg_rows`,
-  `cm_shift`, `cm_message`, `cm_aux_line`, `cm_x_full`, `cm_set_keymap`.
-- `web/src/wasm/`: load module with `@bjorn3/browser_wasi_shim`, typed
-  `Calcumaker` class reading segment bytes / strings out of linear memory.
+### M1 — Wasm binding crate + TS wrapper  ✅ DONE
+- C-ABI: `cm_new/cm_free`, `cm_press`, `cm_press_shift`, `cm_seg_rows`,
+  `cm_shift`, `cm_message`, `cm_aux_line`, `cm_x_full`, `cm_num_personalities`,
+  `cm_set_keymap`, `cm_keymap_name`, `cm_key_label`, `cm_scratch`.
+- `web/src/wasm/calcumaker.ts`: loads via `@bjorn3/browser_wasi_shim`, typed
+  `Calcumaker` class reading segment bytes / strings from linear memory.
 
-### M2 — SVG 7-segment display
-- Digit component: 7 segment polygons + dp, on/off from the seg byte.
-- 3 rows × 16 digits; row/column geometry matching the real board.
-- Annunciators (f, g, C, G, lo-bat) + the 4-line aux OLED panel from
-  `aux_lines()`. First skin: **red LED** (default), with CSS glow.
+### M2 — SVG 7-segment display  ✅ DONE
+- `web/src/display/seg7.ts`: digit = 7 beveled segment polygons + dp dot, on/off
+  from the seg byte; 3 rows × 16 digits built once, class-toggled per frame.
+- Aux OLED panel from `aux_lines()`; f/g annunciators; status line = `x_full()`.
 
-### M3 — Keypad faceplate + input
-- Render the 5×10 Cherry-MX layout from `keys.rs` (base + f/g layer legends).
-- Pointer/click → `press(row,col)`; **physical keyboard** mapping ported from
-  the emu's `HOST_KEYS` table; f/g shift handling.
-- Personality switch (16C / SCI / FIN) via `set_keymap`.
+### M3 — Keypad faceplate + input  ✅ DONE
+- `web/src/keypad/keypad.ts`: 5×10 grid, legends pulled live from the engine
+  (`cm.key_label`) so they follow personality swaps; HP-keycap f/face/g stack.
+- Click → `press`; physical keyboard ported from the emu's `HOST_KEYS`; f/g
+  shift + Esc-cancel. Personality switch (16C / SCI / FIN) via `set_keymap`.
 
-### M4 — Display skins
-- Theme system driven purely by CSS custom properties over the SVG:
-  **red LED / green LED / amber LED / cyan VFD / gray LCD**, glow on/off.
-- Skin switcher UI. (Optional later: a WebGL bloom/CRT layer over the SVG.)
+### M4 — Display skins  ✅ DONE
+- Pure CSS custom properties over the SVG: **red / green / amber LED, cyan VFD,
+  gray LCD** (glow on/off). Skin `<select>` sets `data-skin` on the faceplate.
+- Verified end-to-end in Chromium (`web/scripts/verify-browser.mjs`): 50 keys,
+  3 rows, `2 ENTER 3 +` → `x = 5`, personality swap, screenshots per skin.
 
-### M5 — Polish & deploy
-- Responsive faceplate, copy-X, keyboard help overlay, precision setting.
+### M5 — Polish & deploy  (next)
+- Responsive faceplate for narrow screens, copy-X, keyboard-help overlay,
+  precision/OLED settings, optional WebGL bloom layer.
 - Static build; pick a host (GitHub Pages / Cloudflare Pages). All client-side.
 
 ## Open items to confirm as we go

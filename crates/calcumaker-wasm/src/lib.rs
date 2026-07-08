@@ -10,8 +10,9 @@
 //! gets back the number of bytes written (or the required length). The TS
 //! `Calcumaker` wrapper hides all of this.
 
+use calcumaker_core::keys::{COLS, PERSONALITIES, ROWS};
 use calcumaker_core::seg7::{DIGITS_PER_ROW, DISPLAY_ROWS};
-use calcumaker_core::{App, Key};
+use calcumaker_core::{keydoc, App, Key};
 
 /// A shared 256-byte scratch buffer in linear memory for JS↔wasm string / byte
 /// transfers. Single-threaded and read-immediately, so one reused buffer is
@@ -133,6 +134,66 @@ pub unsafe extern "C" fn cm_x_full(app: *mut App, out: *mut u8, cap: usize) -> u
 pub unsafe extern "C" fn cm_message(app: *mut App, out: *mut u8, cap: usize) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
     write_str(app.message().unwrap_or(""), out, cap)
+}
+
+/// Number of built-in personalities (16C / SCI / FIN). Indices into it are
+/// valid for [`cm_set_keymap`].
+#[no_mangle]
+pub extern "C" fn cm_num_personalities() -> usize {
+    PERSONALITIES.len()
+}
+
+/// Select personality by index (0-based; see [`cm_num_personalities`]).
+/// Out-of-range is ignored. Applies that personality's display-mode defaults.
+///
+/// # Safety
+/// `app` must be a live handle from [`cm_new`].
+#[no_mangle]
+pub unsafe extern "C" fn cm_set_keymap(app: *mut App, idx: usize) {
+    if let (Some(app), Some(&km)) = (app.as_mut(), PERSONALITIES.get(idx)) {
+        app.set_keymap(km);
+    }
+}
+
+/// Write the current personality name (e.g. "16C") into `out`/`cap`; returns the
+/// byte length.
+///
+/// # Safety
+/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn cm_keymap_name(app: *mut App, out: *mut u8, cap: usize) -> usize {
+    let Some(app) = app.as_ref() else { return 0 };
+    write_str(app.keymap().name, out, cap)
+}
+
+/// Write the printed legend for a key on the current personality into `out`/`cap`;
+/// returns the byte length. `layer`: 0 = base face, 1 = f (gold), 2 = g (blue).
+/// This is `keydoc::label` over the live keymap — the same source of truth the
+/// firmware keycaps use, so the web faceplate can never drift from the engine.
+///
+/// # Safety
+/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn cm_key_label(
+    app: *mut App,
+    layer: usize,
+    row: usize,
+    col: usize,
+    out: *mut u8,
+    cap: usize,
+) -> usize {
+    let Some(app) = app.as_ref() else { return 0 };
+    if row >= ROWS || col >= COLS {
+        return 0;
+    }
+    let km = app.keymap();
+    let table = match layer {
+        0 => &km.base,
+        1 => &km.f,
+        2 => &km.g,
+        _ => return 0,
+    };
+    write_str(keydoc::label(table[row][col]), out, cap)
 }
 
 /// # Safety
