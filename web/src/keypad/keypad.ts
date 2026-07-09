@@ -79,7 +79,11 @@ export function createKeypad(cm: Calcumaker, onPress: (r: number, c: number) => 
         gLeg.textContent = g;
         const cell = (fLeg.parentElement as HTMLElement);
         cell.classList.toggle("blank", b === "" && f === "" && g === "");
+        // f is gold, g is blue — the same colours as their legends and the
+        // annunciators, and as the real keycaps.
         cell.classList.toggle("is-shift", b === "f" || b === "g");
+        cell.classList.toggle("is-shift-f", b === "f");
+        cell.classList.toggle("is-shift-g", b === "g");
       }
     }
   }

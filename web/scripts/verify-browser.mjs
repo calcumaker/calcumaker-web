@@ -228,6 +228,42 @@ for (const [w, h] of [[844, 390], [667, 375]]) {
   await lp.close();
 }
 
+// Shift keys wear the device's colours: f gold, g blue (g used to be gold too).
+const shiftColors = await page.evaluate(() => {
+  const bg = (sel) => {
+    const e = document.querySelector(sel);
+    return e ? getComputedStyle(e).backgroundImage : "";
+  };
+  return {
+    f: bg(".key.is-shift-f"), g: bg(".key.is-shift-g"),
+    nf: document.querySelectorAll(".key.is-shift-f").length,
+    ng: document.querySelectorAll(".key.is-shift-g").length,
+  };
+});
+ok(`exactly one f and one g shift key (${shiftColors.nf}/${shiftColors.ng})`,
+  shiftColors.nf === 1 && shiftColors.ng === 1);
+ok("f shift key is gold", /240,\s*194,\s*90/.test(shiftColors.f));
+ok(`g shift key is blue, not gold`,
+  /110,\s*168,\s*255/.test(shiftColors.g) && !/240,\s*194,\s*90/.test(shiftColors.g));
+
+// RAN# is seeded from crypto at load: two fresh loads must not replay the same
+// sequence (the no_std core can't reach entropy — calcumaker@5b75275).
+async function ranAcrossLoad() {
+  const rp = await browser.newPage({ viewport: { width: 1100, height: 820 } });
+  await rp.goto(base, { waitUntil: "networkidle" });
+  await rp.waitForSelector(".seg-row");
+  await rp.locator(".perso button", { hasText: "SCI" }).click(); // RAN# is SCI g-layer
+  await rp.keyboard.press("G");
+  await rp.keyboard.type("^"); // SCI_LAYER_G[2][2] = RAN#
+  await rp.waitForTimeout(200);
+  const v = (await rp.locator(".status-val").textContent()) ?? "";
+  await rp.close();
+  return v;
+}
+const ran1 = await ranAcrossLoad(), ran2 = await ranAcrossLoad();
+ok(`RAN# produces a value (${JSON.stringify(ran1.slice(0, 12))})`, /x = 0\./.test(ran1));
+ok(`RAN# differs across page loads (seeded from crypto)`, ran1 !== ran2);
+
 ok(`no page errors (${errors.length})`, errors.length === 0);
 if (errors.length) console.log(errors.join("\n"));
 

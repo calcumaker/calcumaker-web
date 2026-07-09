@@ -77,6 +77,23 @@ pub unsafe extern "C" fn cm_free(app: *mut App) {
     }
 }
 
+/// Seed the RAN# PRNG from host entropy, as `(hi << 32) | lo`.
+///
+/// The `no_std` core can't reach entropy itself, so every frontend must seed at
+/// startup or `ran` replays the same sequence each launch (the terminal emulator
+/// uses the wall clock, the firmware the device UID). The browser has `crypto`.
+/// Passed as two `u32`s so JS needn't use BigInt for an `i64` parameter. The SEED
+/// key still re-seeds on demand for reproducible runs.
+///
+/// # Safety
+/// `app` must be a live handle from [`cm_new`].
+#[no_mangle]
+pub unsafe extern "C" fn cm_reseed(app: *mut App, hi: u32, lo: u32) {
+    if let Some(app) = app.as_mut() {
+        app.calc_mut().reseed((u64::from(hi) << 32) | u64::from(lo));
+    }
+}
+
 /// Press physical matrix cell `(row, col)`. Out-of-range cells are ignored.
 ///
 /// # Safety

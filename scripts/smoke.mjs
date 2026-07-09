@@ -29,6 +29,8 @@ function newCalc(ex, prec = 256) {
   return {
     press: (r, c) => ex.cm_press(app, r, c),
     pressShift: (which) => ex.cm_press_shift(app, which === "f" ? 0 : 1),
+    setKeymap: (i) => ex.cm_set_keymap(app, i),
+    reseed: (hi, lo) => ex.cm_reseed(app, hi, lo),
     xFull: () => {
       // Getter fills an internal growable buffer and returns its length; read the
       // pointer AFTER the call (the Vec may realloc / memory may grow).
@@ -85,6 +87,25 @@ const ex = await makeInstance();
   check(`big value round-trips (500! = ${x.length} chars, not truncated)`, x.length, 1135);
   check("big value is correct", x.slice(0, 22), "1220136825991110068701");
   c.free();
+}
+
+// RAN# must be seeded by the frontend: the no_std core can't reach entropy, so
+// without cm_reseed every page load replays the same sequence (calcumaker@5b75275).
+function ran(seedHi, seedLo) {
+  const c = newCalc(ex);
+  c.reseed(seedHi, seedLo);
+  c.setKeymap(2); // SCI — RAN# lives at SCI_LAYER_G[2][2]
+  c.press(4, 1);  // g shift
+  c.press(2, 2);  // RAN#
+  const x = c.xFull();
+  c.free();
+  return x;
+}
+{
+  const a = ran(1, 1), b = ran(2, 2), a2 = ran(1, 1);
+  check("RAN# is produced", a.length > 0, true);
+  check(`different seeds give different RAN# (${a.slice(0, 8)} vs ${b.slice(0, 8)})`, a !== b, true);
+  check("same seed is reproducible (SEED key contract)", a, a2);
 }
 
 console.log(failures === 0 ? "\nM0 GREEN — engine runs in wasm." : `\n${failures} FAILURE(S)`);

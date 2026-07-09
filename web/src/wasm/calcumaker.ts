@@ -20,6 +20,7 @@ interface Exports {
   cm_free(app: number): void;
   cm_press(app: number, row: number, col: number): void;
   cm_press_shift(app: number, which: number): void;
+  cm_reseed(app: number, hi: number, lo: number): void;
   cm_seg_rows(app: number, out: number): void;
   cm_shift(app: number): number;
   // String getters fill an internal growable buffer and return its byte length;
@@ -52,6 +53,11 @@ export class Calcumaker {
   private constructor(private ex: Exports, prec: number) {
     this.app = ex.cm_new(prec);
     this.scratch = ex.cm_scratch();
+    // The no_std core can't reach entropy, so frontends seed RAN# at startup or
+    // it replays the same sequence every page load. SEED still gives repeatable
+    // runs on demand.
+    const e = crypto.getRandomValues(new Uint32Array(2));
+    ex.cm_reseed(this.app, e[0], e[1]);
   }
 
   static async load(url = new URL("./calcumaker_wasm.wasm", import.meta.url), prec = 256) {

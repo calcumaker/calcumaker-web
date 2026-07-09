@@ -141,8 +141,11 @@ body {
 }
 .key:active { transform: translateY(2px); box-shadow: 0 0 0 #0c0d10; }
 .key.blank { visibility: hidden; }
-.key.is-shift .face { color: #201a08; }
-.key.is-shift { background: linear-gradient(180deg, var(--gold), #c99a30); }
+/* Shift keys wear their own colours, as on the device: f gold, g blue. */
+.key.is-shift-f { background: linear-gradient(180deg, var(--gold), #c99a30); }
+.key.is-shift-f .face { color: #201a08; }
+.key.is-shift-g { background: linear-gradient(180deg, var(--blue), #3d6fb5); }
+.key.is-shift-g .face { color: #06142c; }
 
 .face { font-size: clamp(9px, 1.5vw, 14px); font-weight: 700; line-height: 1; text-align: center; }
 .leg { font-size: clamp(6px, 1vw, 9px); line-height: 1; min-height: 1em; text-align: center; }
