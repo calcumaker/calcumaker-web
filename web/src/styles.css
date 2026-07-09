@@ -29,7 +29,7 @@ body {
   border: 1px solid #000;
   border-radius: 18px;
   padding: 18px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
+  box-shadow: 0 24px 60px rgb(0, 0, 0, .55), inset 0 1px 0 rgb(255, 255, 255, .06);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -56,7 +56,7 @@ body {
 .annun span { opacity: .18; transition: opacity .08s; padding: 2px 8px; border-radius: 6px; }
 .annun span:first-child { color: var(--gold); }
 .annun span:last-child { color: var(--blue); }
-.annun span.on { opacity: 1; box-shadow: 0 0 12px currentColor; }
+.annun span.on { opacity: 1; box-shadow: 0 0 12px currentcolor; }
 
 .skin-select {
   background: #2f333a; color: var(--ink); border: 1px solid #000;
@@ -74,7 +74,7 @@ body {
   border-radius: 12px;
   padding: 14px 16px;
   border: 1px solid #000;
-  box-shadow: inset 0 3px 16px rgba(0, 0, 0, .7);
+  box-shadow: inset 0 3px 16px rgb(0, 0, 0, .7);
 }
 .display { display: flex; flex-direction: column; gap: 6px; }
 .seg-row { display: block; height: 64px; }
@@ -94,7 +94,7 @@ body {
 
 .aux {
   margin: 10px 0 0; padding-top: 10px;
-  border-top: 1px dashed rgba(255, 255, 255, .12);
+  border-top: 1px dashed rgb(255, 255, 255, .12);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 12px; line-height: 1.4; color: var(--seg-on); opacity: .8;
   min-height: 4.2em; white-space: pre; overflow: hidden;
@@ -127,7 +127,7 @@ body {
   /* Let the 10 columns shrink below their content width instead of forcing the
      whole faceplate wider than a phone screen (grid items default min-width:auto). */
   min-width: 0; overflow: hidden;
-  box-shadow: 0 2px 0 #0c0d10, inset 0 1px 0 rgba(255, 255, 255, .07);
+  box-shadow: 0 2px 0 #0c0d10, inset 0 1px 0 rgb(255, 255, 255, .07);
   transition: transform .04s, box-shadow .04s;
   /* Fast repeated taps: no zoom, no grey flash, no text selection. */
   touch-action: manipulation;
@@ -152,40 +152,40 @@ body {
 .keypad[data-shift="f"] .face, .keypad[data-shift="g"] .face { opacity: .6; }
 
 /* ---- skins (segment color / glow / screen background) ------------------ */
-#faceplate[data-skin="led-red"]   { --screen-bg: #1a0605; --seg-on: #ff3b30; --seg-off: rgba(255,59,48,.07); --glow: 6px; }
-#faceplate[data-skin="led-green"] { --screen-bg: #04140a; --seg-on: #3dff72; --seg-off: rgba(61,255,114,.07); --glow: 6px; }
-#faceplate[data-skin="led-amber"] { --screen-bg: #150d02; --seg-on: #ffb020; --seg-off: rgba(255,176,32,.07); --glow: 6px; }
-#faceplate[data-skin="vfd-cyan"]  { --screen-bg: #02110f; --seg-on: #74f4ff; --seg-off: rgba(116,244,255,.10); --glow: 10px; }
-#faceplate[data-skin="lcd"]       { --screen-bg: #b3bba4; --seg-on: #1b2015; --seg-off: rgba(27,32,21,.12); --glow: 0px; }
-#faceplate[data-skin="lcd"] .aux { color: #1b2015; border-top-color: rgba(0,0,0,.2); }
+#faceplate[data-skin="led-red"]   { --screen-bg: #1a0605; --seg-on: #ff3b30; --seg-off: rgb(255,59,48,.07); --glow: 6px; }
+#faceplate[data-skin="led-green"] { --screen-bg: #04140a; --seg-on: #3dff72; --seg-off: rgb(61,255,114,.07); --glow: 6px; }
+#faceplate[data-skin="led-amber"] { --screen-bg: #150d02; --seg-on: #ffb020; --seg-off: rgb(255,176,32,.07); --glow: 6px; }
+#faceplate[data-skin="vfd-cyan"]  { --screen-bg: #02110f; --seg-on: #74f4ff; --seg-off: rgb(116,244,255,.10); --glow: 10px; }
+#faceplate[data-skin="lcd"]       { --screen-bg: #b3bba4; --seg-on: #1b2015; --seg-off: rgb(27,32,21,.12); --glow: 0px; }
+#faceplate[data-skin="lcd"] .aux { color: #1b2015; border-top-color: rgb(0,0,0,.2); }
 /* On the matrix module the 7-seg skin vars don't apply; keep the screen dark. */
 #faceplate[data-module="matrix"][data-skin] { --screen-bg: #05070a; }
 
 /* ---- help overlay ------------------------------------------------------ */
 .overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, .6);
+  position: fixed; inset: 0; background: rgb(0, 0, 0, .6);
   display: grid; place-items: center; z-index: 10;
 }
 .overlay[hidden] { display: none; }
 .overlay-card {
   background: var(--case); color: var(--ink); border: 1px solid #000;
   border-radius: 14px; padding: 22px 26px; max-width: 460px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+  box-shadow: 0 24px 60px rgb(0, 0, 0, .6);
 }
 .overlay-card h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: .06em; }
 .overlay-card ul { margin: 0; padding-left: 18px; line-height: 1.9; font-size: 14px; }
 .overlay-card b { color: var(--gold); }
 .overlay-card p { color: #aab; font-size: 12.5px; margin: 14px 0 0; }
 .overlay-card p.build {
-  margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .1);
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid rgb(255, 255, 255, .1);
   font-size: 11.5px; color: #889;
 }
 .overlay-card p.build code {
   font-family: ui-monospace, Menlo, monospace; color: var(--gold);
-  background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px;
+  background: rgb(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px;
 }
 .overlay-card p.build a { color: inherit; text-decoration: none; }
-.overlay-card p.build a:hover code { background: rgba(240, 194, 90, .18); }
+.overlay-card p.build a:hover code { background: rgb(240, 194, 90, .18); }
 .overlay-card p.build.legal { margin-top: 6px; padding-top: 0; border-top: 0; }
 .overlay-card p.build.legal a { color: var(--blue); text-decoration: underline; }
 

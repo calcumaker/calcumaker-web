@@ -49,6 +49,12 @@ jobs:
           token: ${{ secrets.CALCUMAKER_REPO_TOKEN || github.token }}
           path: calcumaker
 
+      # Lint the workflow itself (expressions, action inputs, shellcheck on run:).
+      - name: Lint workflows (actionlint)
+        uses: raven-actions/actionlint@v2
+        with:
+          working-directory: calcumaker-web
+
       - name: System deps (m4 is required to build GMP)
         run: sudo apt-get update && sudo apt-get install -y m4
 
@@ -56,6 +62,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1
+          components: rustfmt, clippy
 
       - name: Cache cargo + target
         uses: Swatinem/rust-cache@v2
@@ -103,6 +110,18 @@ jobs:
       - name: Install web deps
         working-directory: calcumaker-web/web
         run: npm ci
+
+      # Fail fast on lint before spending time on the bundle + browser run.
+      - name: Lint TS (ESLint) + CSS (Stylelint)
+        working-directory: calcumaker-web/web
+        run: npm run lint
+
+      # Scoped to OUR crate: `--all` would reach through the path dep and gate our
+      # release on the sibling calcumaker repo's formatting, which isn't ours to enforce.
+      - name: Rust fmt + clippy (wasm binding)
+        run: |
+          cargo fmt -p calcumaker-wasm -- --check
+          cargo clippy -p calcumaker-wasm --target wasm32-wasip1 -- -D warnings
 
       - name: Build static dist
         working-directory: calcumaker-web/web

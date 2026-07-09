@@ -61,6 +61,10 @@ export class Calcumaker {
     const { instance } = await WebAssembly.instantiateStreaming(fetch(url), {
       wasi_snapshot_preview1: wasi.wasiImport,
     });
+    // The shim types `initialize` against its own instance shape; ours is a
+    // reactor module built by rustc. The boundary is deliberately untyped here
+    // and re-typed as `Exports` below, which is the contract we actually rely on.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     wasi.initialize(instance as any);
     return new Calcumaker(instance.exports as unknown as Exports, prec);
   }

@@ -30,6 +30,28 @@ WASI_SDK_PATH=/opt/wasi-sdk ./third_party/build-gmp-mpfr-wasi.sh
 cd web && npm install && npm run dev
 ```
 
+## Lint & test
+
+```sh
+cd web && npm run lint          # ESLint (TS) + Stylelint (CSS); --max-warnings 0
+cd web && npm run lint:fix      # auto-fix what's fixable
+cargo fmt -p calcumaker-wasm -- --check
+cargo clippy -p calcumaker-wasm --target wasm32-wasip1 -- -D warnings
+
+node scripts/smoke.mjs                      # engine under Node WASI (GMP/MPFR)
+cd web && npm run build && node scripts/verify-browser.mjs   # end-to-end in Chromium
+```
+
+CI runs all of these plus **actionlint** on the workflows. The browser suite
+guards behaviour *and* layout: both display modules, all skins/palettes, the help
+overlay + build versions, the colophon links, no horizontal overflow at 320/360/
+390px, landscape keypad visibility, and `touch-action` (double-tap zoom off,
+pinch-zoom on).
+
+> The Rust lints are scoped to `-p calcumaker-wasm` on purpose: `--all` reaches
+> through the path dependency into the sibling `calcumaker` repo, whose
+> formatting isn't ours to gate.
+
 ## Ship a static build
 
 The app is 100% client-side — no server, no runtime network. Produce the bundle
