@@ -30,6 +30,34 @@ WASI_SDK_PATH=/opt/wasi-sdk ./third_party/build-gmp-mpfr-wasi.sh
 cd web && npm install && npm run dev
 ```
 
+## Engine version
+
+`calcumaker-wasm` builds the engine as a **path dependency** on the sibling
+`../calcumaker` checkout, so nothing about the Cargo graph pins it. The pin lives
+in **[`engine.lock`](engine.lock)** — one line, the engine commit SHA — and CI
+builds *that* ref, never "whatever HEAD happens to be". A bundle is therefore
+reproducible from the commit that produced it.
+
+It updates itself:
+
+1. A push to `calcumaker` touching the engine (`calcumaker-core`,
+   `gmp-mpfr-nostd`, or the matrix font) fires an `engine-updated`
+   `repository_dispatch` at this repo (see `notify-web.yml` there; needs a
+   `WEB_DISPATCH_TOKEN` secret with `actions: write` here).
+2. This repo rebuilds against that SHA and runs every gate.
+3. **Only if they all pass** does CI commit the `engine.lock` bump and publish.
+   A bad engine commit leaves the pin alone and goes red, naming the commit.
+
+The bot's push uses `GITHUB_TOKEN`, which doesn't retrigger workflows, so it
+can't loop. To adopt an engine commit by hand:
+
+```sh
+git -C ../calcumaker rev-parse HEAD > engine.lock
+```
+
+`scripts/build-wasm.sh` warns when your sibling checkout has drifted from the
+pin, so a local build can't quietly disagree with what will ship.
+
 ## Lint & test
 
 ```sh

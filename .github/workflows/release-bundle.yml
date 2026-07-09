@@ -12,10 +12,14 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  # calcumaker fires this on a push that touches the engine (see its notify-web
+  # workflow). We build the dispatched SHA and, if every gate passes, bump the pin.
+  repository_dispatch:
+    types: [engine-updated]
   workflow_dispatch:
     inputs:
       calcumaker_ref:
-        description: "Ref of calcumaker/calcumaker to build against (default branch if empty)"
+        description: "Ref of calcumaker/calcumaker to build against (engine.lock if empty)"
         required: false
         default: ""
 
@@ -48,11 +52,22 @@ jobs:
         with:
           path: calcumaker-web
 
+      # Precedence: manual input > dispatched SHA > engine.lock. Never "whatever
+      # HEAD happens to be" — a bundle must be reproducible from its commit.
+      - name: Resolve the engine ref
+        id: pin
+        run: |
+          ref='${{ github.event.inputs.calcumaker_ref }}'
+          [ -n "$ref" ] || ref='${{ github.event.client_payload.sha }}'
+          [ -n "$ref" ] || ref="$(tr -d '[:space:]' < engine.lock)"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "building against engine $ref"
+
       - name: Checkout calcumaker (sibling — engine source for the path dep)
         uses: actions/checkout@v7
         with:
           repository: calcumaker/calcumaker
-          ref: ${{ github.event.inputs.calcumaker_ref }}
+          ref: ${{ steps.pin.outputs.ref }}
           # Same-org private repos need a PAT/deploy-key secret; falls back to
           # the job token when the repo is public / accessible.
           token: ${{ secrets.CALCUMAKER_REPO_TOKEN || github.token }}
@@ -141,6 +156,31 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           node scripts/verify-browser.mjs
+
+      # Every gate above has passed, so this engine is safe to adopt. Only bumps on
+      # a dispatch (a deliberate "track the engine" event) and only on main. A push
+      # made with GITHUB_TOKEN does not retrigger workflows, so this cannot loop.
+      - name: Adopt the engine (bump engine.lock)
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch')
+        run: |
+          have="$(git -C ../calcumaker rev-parse HEAD)"
+          want="$(tr -d '[:space:]' < engine.lock)"
+          if [ "$have" = "$want" ]; then
+            echo "engine.lock already at ${have:0:7} — nothing to bump"
+            exit 0
+          fi
+          subject="$(git -C ../calcumaker log -1 --format=%s)"
+          echo "$have" > engine.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add engine.lock
+          git commit -m "engine: adopt ${have:0:7} — ${subject}" \
+                     -m "All gates green against this engine: fmt, clippy, Node WASI smoke, font parity, and the Chromium suite." \
+                     -m "Bumped automatically by release-bundle.yml on an engine-updated dispatch."
+          git push origin HEAD:main
+          echo "adopted engine ${have:0:7}"
 
       - name: Assemble release bundle (stable names + provenance)
         id: bundle
