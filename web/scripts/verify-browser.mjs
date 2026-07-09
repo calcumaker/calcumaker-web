@@ -100,6 +100,22 @@ await page.keyboard.press("Q"); // sqrt(2): ~77 digits
 const stH = (await page.locator(".status").boundingBox()).height;
 ok(`status stays one line for a long value (${Math.round(stH)}px)`, stH < 28);
 
+// Responsive: no horizontal overflow at portrait phone widths (regression guard
+// for the keypad forcing the faceplate wider than the screen).
+for (const w of [320, 360, 390]) {
+  const mp = await browser.newPage({ viewport: { width: w, height: 844 } });
+  await mp.goto(base, { waitUntil: "networkidle" });
+  await mp.waitForSelector(".seg-row");
+  const { sw, iw, keyW } = await mp.evaluate(() => ({
+    sw: document.documentElement.scrollWidth,
+    iw: window.innerWidth,
+    keyW: Math.round(document.querySelector(".key").getBoundingClientRect().width),
+  }));
+  ok(`no horizontal overflow at ${w}px (scrollW ${sw} <= ${iw}; key ${keyW}px)`, sw <= iw);
+  if (w === 390) await mp.screenshot({ path: join(SHOTS, "mobile-390.png"), fullPage: true });
+  await mp.close();
+}
+
 ok(`no page errors (${errors.length})`, errors.length === 0);
 if (errors.length) console.log(errors.join("\n"));
 

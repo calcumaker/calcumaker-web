@@ -120,6 +120,9 @@ body {
   cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; padding: 3px;
+  /* Let the 10 columns shrink below their content width instead of forcing the
+     whole faceplate wider than a phone screen (grid items default min-width:auto). */
+  min-width: 0; overflow: hidden;
   box-shadow: 0 2px 0 #0c0d10, inset 0 1px 0 rgba(255, 255, 255, .07);
   transition: transform .04s, box-shadow .04s;
 }
@@ -176,12 +179,27 @@ body {
 
 /* ---- responsive -------------------------------------------------------- */
 @media (max-width: 640px) {
-  body { padding: 8px; }
-  #faceplate { padding: 12px; border-radius: 12px; gap: 10px; }
-  .bar { flex-wrap: wrap; gap: 8px; }
-  .annun { margin-left: 0; }
-  .keypad { gap: 4px; }
-  .seg-row { height: 40px; }
-  .face { font-size: 11px; }
-  .leg { font-size: 7px; }
+  body { padding: 6px; }
+  #faceplate { padding: 10px; border-radius: 12px; gap: 8px; }
+  .bar { flex-wrap: wrap; gap: 6px 8px; }
+  .brand { width: 100%; }                 /* brand on its own row */
+  .brand b { font-size: 16px; }
+  .annun { margin-left: auto; }           /* push f/g annunciators to the right */
+  .switch button { padding: 4px 9px; font-size: 12px; }
+  .skin-select, .help-btn { font-size: 12px; }
+  .screen { padding: 10px 12px; }
+  .seg-row { height: 34px; }
+  .keypad { gap: 3px; }
+  .key { padding: 2px 1px; border-radius: 6px; gap: 1px; }
+  /* Sized so the widest face (ENTER/WSIZE) fits a ~33px key without clipping. */
+  .face { font-size: clamp(7px, 2.2vw, 12px); letter-spacing: -.02em; }
+  .leg { font-size: clamp(5px, 1.6vw, 8px); }
+  .aux { font-size: 11px; }
+  .status { font-size: 12px; }
+}
+/* Very narrow (small phones ≤360px): drop the tiny f/g shift legends to keep the
+   primary faces legible. Shifts still work via the keyboard / f,g keys. */
+@media (max-width: 360px) {
+  .leg { display: none; }
+  .keypad[data-shift] .face { opacity: 1; }
 }
