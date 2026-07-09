@@ -32,6 +32,34 @@ pub extern "C" fn cm_scratch_cap() -> usize {
     SCRATCH_CAP
 }
 
+// Growable buffer for strings of unbounded length. The calculator is
+// arbitrary-precision: `x_full()` on 500! is >1000 bytes, and 1000! is >2500.
+// A fixed 256-byte buffer silently truncated those to the empty string, so the
+// string getters write here and return the length; JS reads `cm_out_ptr()..len`.
+//
+// The pointer MUST be read *after* the writing call: the Vec may reallocate and
+// wasm memory may grow, which detaches any previously-taken ArrayBuffer view.
+thread_local! {
+    static OUT: core::cell::RefCell<Vec<u8>> = const { core::cell::RefCell::new(Vec::new()) };
+}
+
+/// Replace the output buffer with `s`; returns its byte length.
+fn put(s: &str) -> usize {
+    OUT.with(|o| {
+        let mut o = o.borrow_mut();
+        o.clear();
+        o.extend_from_slice(s.as_bytes());
+        o.len()
+    })
+}
+
+/// Pointer to the output buffer. Call only *after* the getter that filled it —
+/// the Vec may have reallocated and wasm memory may have grown.
+#[no_mangle]
+pub extern "C" fn cm_out_ptr() -> *const u8 {
+    OUT.with(|o| o.borrow().as_ptr())
+}
+
 /// Create an `App` at `prec` bits of working precision. Returns an opaque handle.
 #[no_mangle]
 pub extern "C" fn cm_new(prec: u32) -> *mut App {
@@ -107,13 +135,13 @@ pub unsafe extern "C" fn cm_shift(app: *mut App) -> u32 {
 /// full byte length (may exceed `cap`, in which case nothing is written).
 ///
 /// # Safety
-/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+/// `app` must be a live handle from [`cm_new`]. Read the result via [`cm_out_ptr`].
 #[no_mangle]
-pub unsafe extern "C" fn cm_aux_line(app: *mut App, idx: usize, out: *mut u8, cap: usize) -> usize {
+pub unsafe extern "C" fn cm_aux_line(app: *mut App, idx: usize) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
     let lines = app.aux_lines();
     let Some(s) = lines.get(idx) else { return 0 };
-    write_str(s, out, cap)
+    put(s)
 }
 
 /// Write display text row `idx` (0..DISPLAY_ROWS) into `out`/`cap` as ASCII;
@@ -121,33 +149,33 @@ pub unsafe extern "C" fn cm_aux_line(app: *mut App, idx: usize, out: *mut u8, ca
 /// its 5×7 font) — the alternate display feed, distinct from the 7-seg bytes.
 ///
 /// # Safety
-/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+/// `app` must be a live handle from [`cm_new`]. Read the result via [`cm_out_ptr`].
 #[no_mangle]
-pub unsafe extern "C" fn cm_text_row(app: *mut App, idx: usize, out: *mut u8, cap: usize) -> usize {
+pub unsafe extern "C" fn cm_text_row(app: *mut App, idx: usize) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
     let rows = app.text_rows();
     let Some(s) = rows.get(idx) else { return 0 };
-    write_str(s, out, cap)
+    put(s)
 }
 
 /// Write the untruncated X register into `out`/`cap`; returns the byte length.
 ///
 /// # Safety
-/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+/// `app` must be a live handle from [`cm_new`]. Read the result via [`cm_out_ptr`].
 #[no_mangle]
-pub unsafe extern "C" fn cm_x_full(app: *mut App, out: *mut u8, cap: usize) -> usize {
+pub unsafe extern "C" fn cm_x_full(app: *mut App) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
-    write_str(&app.x_full(), out, cap)
+    put(&app.x_full())
 }
 
 /// Write the status/error message (empty if none); returns the byte length.
 ///
 /// # Safety
-/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+/// `app` must be a live handle from [`cm_new`]. Read the result via [`cm_out_ptr`].
 #[no_mangle]
-pub unsafe extern "C" fn cm_message(app: *mut App, out: *mut u8, cap: usize) -> usize {
+pub unsafe extern "C" fn cm_message(app: *mut App) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
-    write_str(app.message().unwrap_or(""), out, cap)
+    put(app.message().unwrap_or(""))
 }
 
 /// Number of built-in personalities (16C / SCI / FIN). Indices into it are
@@ -173,11 +201,11 @@ pub unsafe extern "C" fn cm_set_keymap(app: *mut App, idx: usize) {
 /// byte length.
 ///
 /// # Safety
-/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+/// `app` must be a live handle from [`cm_new`]. Read the result via [`cm_out_ptr`].
 #[no_mangle]
-pub unsafe extern "C" fn cm_keymap_name(app: *mut App, out: *mut u8, cap: usize) -> usize {
+pub unsafe extern "C" fn cm_keymap_name(app: *mut App) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
-    write_str(app.keymap().name, out, cap)
+    put(app.keymap().name)
 }
 
 /// Write the printed legend for a key on the current personality into `out`/`cap`;
@@ -186,15 +214,13 @@ pub unsafe extern "C" fn cm_keymap_name(app: *mut App, out: *mut u8, cap: usize)
 /// firmware keycaps use, so the web faceplate can never drift from the engine.
 ///
 /// # Safety
-/// `app` must be a live handle; `out` must point to at least `cap` bytes.
+/// `app` must be a live handle from [`cm_new`]. Read the result via [`cm_out_ptr`].
 #[no_mangle]
 pub unsafe extern "C" fn cm_key_label(
     app: *mut App,
     layer: usize,
     row: usize,
     col: usize,
-    out: *mut u8,
-    cap: usize,
 ) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
     if row >= ROWS || col >= COLS {
@@ -207,17 +233,7 @@ pub unsafe extern "C" fn cm_key_label(
         2 => &km.g,
         _ => return 0,
     };
-    write_str(keydoc::label(table[row][col]), out, cap)
-}
-
-/// # Safety
-/// `out` must point to at least `cap` writable bytes.
-unsafe fn write_str(s: &str, out: *mut u8, cap: usize) -> usize {
-    let bytes = s.as_bytes();
-    if bytes.len() <= cap {
-        core::ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len());
-    }
-    bytes.len()
+    put(keydoc::label(table[row][col]))
 }
 
 /// Compile-time sanity: the JS side hard-codes 48; keep it honest.

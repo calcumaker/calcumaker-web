@@ -21,6 +21,24 @@ const PALETTE_NAMES: Record<string, string> = {
   rgb: "Per-row RGB", amber: "Amber", green: "Green", white: "White",
 };
 
+/**
+ * The engine is arbitrary-precision: `500!` is 1,135 characters and `1000!` is
+ * over 2,500. Rendering that verbatim in the status line is useless even when
+ * clipped — you see a wall of digits with no idea how many. Keep the head and
+ * tail (the parts you actually read) and state the length. The full value stays
+ * one click away via copy-to-clipboard.
+ */
+const STATUS_MAX = 56;
+const HEAD = 30;
+const TAIL = 12;
+
+/** `[value, meta]` — meta is rendered in its own non-shrinking element so the
+ *  length never gets clipped away by the value's ellipsis on narrow screens. */
+function summarize(x: string): [string, string] {
+  if (x.length <= STATUS_MAX) return [x, ""];
+  return [`${x.slice(0, HEAD)}…${x.slice(-TAIL)}`, `(${x.length} chars)`];
+}
+
 async function main() {
   const cm = await Calcumaker.load();
 
@@ -129,9 +147,15 @@ async function main() {
   status.className = "status";
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
+  const statusVal = document.createElement("span");
+  statusVal.className = "status-val";
+  const statusMeta = document.createElement("span");
+  statusMeta.className = "status-meta";
+  status.append(statusVal, statusMeta);
   status.addEventListener("click", () => {
     navigator.clipboard?.writeText(cm.xFull()).then(() => {
-      status.textContent = "✓ copied to clipboard";
+      statusVal.textContent = "✓ copied to clipboard";
+      statusMeta.textContent = "";
       status.classList.add("copied");
       setTimeout(() => { status.classList.remove("copied"); render(); }, 900);
     });
@@ -153,9 +177,20 @@ async function main() {
     annG.classList.toggle("on", shift === "g");
     aux.textContent = [0, 1, 2, 3].map((i) => cm.auxLine(i)).join("\n");
     const msg = cm.message();
-    const text = msg ? msg : `x = ${cm.xFull()}`;
-    status.textContent = text;
-    status.title = `${text}\n(click to copy X)`; // full value on hover; visually one-line
+    if (msg) {
+      statusVal.textContent = msg;
+      statusMeta.textContent = "";
+      status.title = msg;
+    } else {
+      const x = cm.xFull();
+      const [val, meta] = summarize(x);
+      statusVal.textContent = `x = ${val}`;
+      statusMeta.textContent = meta;
+      // Don't put a 1000-digit value in the tooltip (or the aria-live region).
+      status.title = x.length > STATUS_MAX
+        ? `x has ${x.length} characters — click to copy the full value`
+        : `${x}\n(click to copy X)`;
+    }
   }
 
   help.addEventListener("click", () => overlay.toggle());

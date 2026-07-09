@@ -114,12 +114,43 @@ ok("links to the AGPL text",
 ok("external links are rel=noopener",
   (await page.locator('footer.colophon a[rel~="noopener"]').count()) === 3);
 
+// Arbitrary precision reaches the UI: 500! is 1135 chars. The status line used
+// to blank out (fixed 256-byte transfer buffer) and, once fixed, its `nowrap`
+// max-content width stretched the page. Both must stay fixed.
+{
+  const bp = await browser.newPage({ viewport: { width: 1100, height: 820 } });
+  await bp.goto(base, { waitUntil: "networkidle" });
+  await bp.waitForSelector(".seg-row");
+  for (const k of "500") await bp.keyboard.press(k);
+  await bp.keyboard.press("G"); // g shift
+  await bp.keyboard.press("4"); // g-layer: x!
+  await bp.waitForTimeout(400);
+  const st = await bp.evaluate(() => {
+    const e = document.querySelector(".status");
+    return { text: e.textContent, title: e.getAttribute("title"), h: e.getBoundingClientRect().height };
+  });
+  ok("big value reaches the status line (not blanked by a fixed buffer)",
+    st.text.startsWith("x = 1220136825991110068701"));
+  ok(`big value is summarised with its length (${JSON.stringify(st.text.slice(-14))})`,
+    /\(1135 chars\)$/.test(st.text.trim()));
+  ok(`big value keeps the status to one line (${Math.round(st.h)}px)`, st.h < 28);
+  ok("tooltip states the length rather than dumping 1135 chars",
+    /1135 characters/.test(st.title ?? "") && !/1220136825991110068701/.test(st.title ?? ""));
+  await bp.close();
+}
+
 // Responsive: no horizontal overflow at portrait phone widths (regression guard
-// for the keypad forcing the faceplate wider than the screen).
+// for the keypad forcing the faceplate wider than the screen, and for the
+// nowrap status line stretching the body grid's max-content column).
 for (const w of [320, 360, 390]) {
   const mp = await browser.newPage({ viewport: { width: w, height: 844 } });
   await mp.goto(base, { waitUntil: "networkidle" });
   await mp.waitForSelector(".seg-row");
+  // Put a 1135-char value in the status line before measuring.
+  for (const k of "500") await mp.keyboard.press(k);
+  await mp.keyboard.press("G");
+  await mp.keyboard.press("4");
+  await mp.waitForTimeout(300);
   const { sw, iw, keyW } = await mp.evaluate(() => ({
     sw: document.documentElement.scrollWidth,
     iw: window.innerWidth,

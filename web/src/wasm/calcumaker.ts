@@ -22,15 +22,19 @@ interface Exports {
   cm_press_shift(app: number, which: number): void;
   cm_seg_rows(app: number, out: number): void;
   cm_shift(app: number): number;
-  cm_aux_line(app: number, idx: number, out: number, cap: number): number;
-  cm_text_row(app: number, idx: number, out: number, cap: number): number;
-  cm_x_full(app: number, out: number, cap: number): number;
-  cm_message(app: number, out: number, cap: number): number;
+  // String getters fill an internal growable buffer and return its byte length;
+  // the bytes live at cm_out_ptr(). Values are unbounded (500! is >1000 digits),
+  // so they must not be capped.
+  cm_aux_line(app: number, idx: number): number;
+  cm_text_row(app: number, idx: number): number;
+  cm_x_full(app: number): number;
+  cm_message(app: number): number;
   cm_num_personalities(): number;
   cm_set_keymap(app: number, idx: number): void;
-  cm_keymap_name(app: number, out: number, cap: number): number;
-  cm_key_label(app: number, layer: number, row: number, col: number, out: number, cap: number): number;
-  // Shared scratch buffer for byte/string transfers (no allocator exported).
+  cm_keymap_name(app: number): number;
+  cm_key_label(app: number, layer: number, row: number, col: number): number;
+  cm_out_ptr(): number;
+  // Fixed scratch buffer, used only for the 48 segment bytes.
   cm_scratch(): number;
   cm_scratch_cap(): number;
 }
@@ -43,13 +47,11 @@ export type Shift = "none" | "f" | "g";
 export class Calcumaker {
   private app: number;
   private scratch: number;
-  private scratchCap: number;
   private dec = new TextDecoder();
 
   private constructor(private ex: Exports, prec: number) {
     this.app = ex.cm_new(prec);
     this.scratch = ex.cm_scratch();
-    this.scratchCap = ex.cm_scratch_cap();
   }
 
   static async load(url = new URL("./calcumaker_wasm.wasm", import.meta.url), prec = 256) {
@@ -80,26 +82,30 @@ export class Calcumaker {
   }
 
   shift(): Shift { return (["none", "f", "g"] as const)[this.ex.cm_shift(this.app)]; }
-  auxLine(i: number): string { return this.readStr((o, c) => this.ex.cm_aux_line(this.app, i, o, c)); }
-  xFull(): string { return this.readStr((o, c) => this.ex.cm_x_full(this.app, o, c)); }
-  message(): string { return this.readStr((o, c) => this.ex.cm_message(this.app, o, c)); }
+  auxLine(i: number): string { return this.readStr(this.ex.cm_aux_line(this.app, i)); }
+  xFull(): string { return this.readStr(this.ex.cm_x_full(this.app)); }
+  message(): string { return this.readStr(this.ex.cm_message(this.app)); }
 
   /** ASCII text for display row `i` — what the RGB dot-matrix module renders. */
-  textRow(i: number): string { return this.readStr((o, c) => this.ex.cm_text_row(this.app, i, o, c)); }
+  textRow(i: number): string { return this.readStr(this.ex.cm_text_row(this.app, i)); }
 
   // Personalities (16C / SCI / FIN) and key legends — straight from the engine's
   // keys.rs tables, so the faceplate never drifts from the real keymap.
   numPersonalities(): number { return this.ex.cm_num_personalities(); }
   setKeymap(idx: number) { this.ex.cm_set_keymap(this.app, idx); }
-  keymapName(): string { return this.readStr((o, c) => this.ex.cm_keymap_name(this.app, o, c)); }
+  keymapName(): string { return this.readStr(this.ex.cm_keymap_name(this.app)); }
   keyLabel(layer: Layer, row: number, col: number): string {
-    return this.readStr((o, c) => this.ex.cm_key_label(this.app, layer, row, col, o, c));
+    return this.readStr(this.ex.cm_key_label(this.app, layer, row, col));
   }
 
-  private readStr(call: (out: number, cap: number) => number): string {
-    const cap = this.scratchCap;
-    const n = call(this.scratch, cap);
-    if (n === 0 || n > cap) return "";
-    return this.dec.decode(new Uint8Array(this.ex.memory.buffer, this.scratch, n));
+  /**
+   * Decode `len` bytes from the engine's output buffer. Values are unbounded
+   * (500! is >1000 digits), so nothing is truncated. Both `cm_out_ptr()` and
+   * `memory.buffer` are read AFTER the getter ran: the buffer may have
+   * reallocated and wasm memory may have grown, detaching any earlier view.
+   */
+  private readStr(len: number): string {
+    if (len === 0) return "";
+    return this.dec.decode(new Uint8Array(this.ex.memory.buffer, this.ex.cm_out_ptr(), len));
   }
 }

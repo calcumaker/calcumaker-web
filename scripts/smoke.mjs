@@ -26,14 +26,15 @@ const dec = new TextDecoder();
 
 function newCalc(ex, prec = 256) {
   const app = ex.cm_new(prec);
-  const scratch = ex.cm_scratch();
-  const cap = ex.cm_scratch_cap();
   return {
     press: (r, c) => ex.cm_press(app, r, c),
+    pressShift: (which) => ex.cm_press_shift(app, which === "f" ? 0 : 1),
     xFull: () => {
-      const n = ex.cm_x_full(app, scratch, cap);
-      if (n === 0 || n > cap) return "";
-      return dec.decode(new Uint8Array(ex.memory.buffer, scratch, n));
+      // Getter fills an internal growable buffer and returns its length; read the
+      // pointer AFTER the call (the Vec may realloc / memory may grow).
+      const n = ex.cm_x_full(app);
+      if (n === 0) return "";
+      return dec.decode(new Uint8Array(ex.memory.buffer, ex.cm_out_ptr(), n));
     },
     free: () => ex.cm_free(app),
   };
@@ -68,6 +69,22 @@ const ex = await makeInstance();
   c.press(4, 6); // 0
   c.press(0, 4); // SQRT
   check("MPFR 2.0 SQRT", c.xFull(), (s) => s.startsWith("1.41421356"));
+}
+
+// Unbounded strings: 500! is 1135 chars. A fixed 256-byte transfer buffer used
+// to silently return "" for anything longer, so the status line went blank and
+// copy-to-clipboard copied nothing. Guard the whole round-trip.
+{
+  const c = newCalc(ex);
+  c.press(2, 7); // 5
+  c.press(4, 6); // 0
+  c.press(4, 6); // 0
+  c.press(4, 1); // ShiftG cell — resolves the next press through the g layer
+  c.press(2, 6); // g-layer: x!  => 500!
+  const x = c.xFull();
+  check(`big value round-trips (500! = ${x.length} chars, not truncated)`, x.length, 1135);
+  check("big value is correct", x.slice(0, 22), "1220136825991110068701");
+  c.free();
 }
 
 console.log(failures === 0 ? "\nM0 GREEN — engine runs in wasm." : `\n${failures} FAILURE(S)`);
