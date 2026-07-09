@@ -101,7 +101,14 @@ body {
   border-top: 1px dashed rgb(255, 255, 255, .12);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 12px; line-height: 1.4; color: var(--seg-on); opacity: .8;
-  min-height: 4.2em; white-space: pre; overflow: hidden;
+  /* The aux OLED is a fixed 128x32 panel = 4 rows of 8px, and the engine always
+     emits exactly 4 lines (App::aux_lines). Pin the box to 4 rows: the old
+     min-height (4.2em) only covered 3, so a long value wrapping into row 4 grew
+     the panel and shoved the keypad down. content-box so padding/border sit
+     outside the 4-row height and it survives the font-size change on mobile. */
+  box-sizing: content-box;
+  height: calc(4 * 1.4em);
+  white-space: pre; overflow: hidden;
 }
 
 .status {

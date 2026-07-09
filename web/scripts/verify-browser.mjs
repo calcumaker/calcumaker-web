@@ -136,6 +136,24 @@ ok("external links are rel=noopener",
   ok(`big value keeps the status to one line (${Math.round(st.h)}px)`, st.h < 28);
   ok("tooltip states the length rather than dumping 1135 chars",
     /1135 characters/.test(st.title ?? "") && !/1220136825991110068701/.test(st.title ?? ""));
+
+  // The aux OLED is a fixed 128x32 panel (4 rows). It must not grow when a long
+  // value wraps into row 4 — that used to shove the keypad down 17px.
+  const full = await bp.evaluate(() => ({
+    aux: Math.round(document.querySelector(".aux").getBoundingClientRect().height),
+    keypadTop: Math.round(document.querySelector(".keypad").getBoundingClientRect().top),
+    rows: document.querySelector(".aux").textContent.split("\n").length,
+  }));
+  await bp.keyboard.press("X"); // CLx — empties the aux body rows
+  await bp.waitForTimeout(200);
+  const empty = await bp.evaluate(() => ({
+    aux: Math.round(document.querySelector(".aux").getBoundingClientRect().height),
+    keypadTop: Math.round(document.querySelector(".keypad").getBoundingClientRect().top),
+  }));
+  ok(`aux OLED renders exactly 4 rows (${full.rows})`, full.rows === 4);
+  ok(`aux OLED is fixed height, full vs empty (${full.aux} == ${empty.aux})`, full.aux === empty.aux);
+  ok(`aux OLED doesn't shift the keypad (${full.keypadTop} == ${empty.keypadTop})`,
+    full.keypadTop === empty.keypadTop);
   await bp.close();
 }
 
