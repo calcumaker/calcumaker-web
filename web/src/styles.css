@@ -88,6 +88,15 @@ body {
 #faceplate[data-module="seg"] .matrix { display: none; }
 #faceplate[data-module="matrix"] .display { display: none; }
 #faceplate[data-module="matrix"] .screen { background: #05070a; }
+
+/* 7-segment fills come from the active skin's custom properties. Without these
+   `fill` falls back to its initial value (black) and the display renders black
+   on black — which is exactly what happened when this block was lost. */
+.seg { fill: var(--seg-off); }
+.seg.on {
+  fill: var(--seg-on);
+  filter: drop-shadow(0 0 var(--glow) var(--seg-on));
+}
 #faceplate[data-module="matrix"] /* Aux OLED: a 0.91" 128x32 panel. Fixed 4:1 aspect, so it can never change
    height with content. Small on purpose — it's a 1" display beside a big
    7-segment stack, not a text pane. */
@@ -97,7 +106,7 @@ body {
 }
 .oled canvas {
   display: block;
-  width: min(352px, 100%); height: auto;
+  width: min(264px, 100%); height: auto;
   border-radius: 3px;
   box-shadow: 0 0 0 1px rgb(0, 0, 0, .8), 0 2px 10px rgb(0, 0, 0, .5);
 }
@@ -267,4 +276,7 @@ body {
 .key--2u {
   aspect-ratio: auto;
   height: auto;
+  /* A shade lighter than the 1U keys, so the tall keycap reads as its own thing
+     rather than two keys that failed to separate. */
+  background: linear-gradient(180deg, #3f454f, #2b2f37);
 }

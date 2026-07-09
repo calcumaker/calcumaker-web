@@ -63,6 +63,17 @@ ok(`x<>y moved to base (3,4) (${enter2u.base34})`, enter2u.base34 === "x<>y");
 ok(`f+ENTER is WSIZE, g+ENTER is FLOAT (${enter2u.fEnter}/${enter2u.gEnter})`,
   enter2u.fEnter === "WSIZE" && enter2u.gEnter === "FLOAT");
 
+// The 2U ENTER wears a lighter shade so the tall keycap reads as its own thing.
+const shades = await page.evaluate(() => ({
+  enter: getComputedStyle(document.querySelector(".key--2u")).backgroundImage,
+  plain: getComputedStyle(document.querySelector('.key[data-row="4"][data-col="6"]')).backgroundImage,
+}));
+ok("2U ENTER is a different shade from the 1U keys", shades.enter !== shades.plain);
+
+// The aux OLED is a 0.91" panel; it must not read as a full-width text pane.
+const oledW = Math.round((await page.locator(".oled canvas").boundingBox()).width);
+ok(`aux OLED is small (${oledW}px <= 280)`, oledW <= 280);
+
 // The moved host key must actually drive the moved function: 3 ENTER 4 x -> 3.
 {
   const sp = await browser.newPage({ viewport: { width: 1100, height: 820 } });
@@ -105,15 +116,35 @@ await page.locator(".perso button", { hasText: "SCI" }).click();
 ok("SCI personality active", (await page.locator(".perso button.active", { hasText: "SCI" }).count()) === 1);
 await page.locator(".perso button", { hasText: "16C" }).click();
 
-// Screenshot every 7-seg skin.
+// Screenshot every 7-seg skin, and check the segments actually take the skin's
+// COLOUR. Counting `.seg.on` elements is not enough: when the `.seg` fill rules
+// were once lost, `fill` fell back to its initial value (black) and the display
+// rendered black-on-black while every element-count assertion still passed.
+const SKIN_LIT = {
+  "led-red": "rgb(255, 59, 48)", "led-green": "rgb(61, 255, 114)",
+  "led-amber": "rgb(255, 176, 32)", "vfd-cyan": "rgb(116, 244, 255)",
+  lcd: "rgb(27, 32, 21)", // #1b2015
+};
 await mkdir(SHOTS, { recursive: true });
 const skins = await page.locator(".skin-select option").evaluateAll((os) => os.map((o) => o.value));
 for (const s of skins) {
   await page.selectOption(".skin-select", s);
   await page.waitForTimeout(120);
+  const paint = await page.evaluate(() => {
+    const on = document.querySelector(".seg.on"), off = document.querySelector(".seg:not(.on)");
+    return {
+      on: getComputedStyle(on).fill,
+      off: getComputedStyle(off).fill,
+      filter: getComputedStyle(on).filter,
+    };
+  });
+  ok(`skin ${s}: lit segments are ${SKIN_LIT[s] ?? "?"} (got ${paint.on})`, paint.on === SKIN_LIT[s]);
+  ok(`skin ${s}: lit segments are not black`, paint.on !== "rgb(0, 0, 0)");
+  ok(`skin ${s}: unlit segments are a faded tint (${paint.off})`, /^rgba\(/.test(paint.off));
   await page.locator("#faceplate").screenshot({ path: join(SHOTS, `${s}.png`) });
 }
 ok(`screenshot each 7-seg skin (${skins.length})`, skins.length === 5);
+await page.selectOption(".skin-select", "led-red");
 
 // Switch to the RGB dot-matrix module and confirm it draws lit pixels.
 await page.locator(".module button", { hasText: "Matrix" }).click();
