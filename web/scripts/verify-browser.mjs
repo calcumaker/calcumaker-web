@@ -234,6 +234,47 @@ ok("external links are rel=noopener",
   ok("tooltip states the length rather than dumping 1135 chars",
     /1135 characters/.test(st.title ?? "") && !/1220136825991110068701/.test(st.title ?? ""));
 
+  // A value too wide for the row is marked, and BOTH modules show it. The glass
+  // lights segments a+b+c+d (a ']'); the matrix draws the same '>' the engine put
+  // in the row text. Before calcumaker@c29d754 the matrix truncated silently.
+  const marker = await bp.evaluate(() => {
+    const rows = document.querySelectorAll(".seg-row");
+    const digits = rows[rows.length - 1].querySelectorAll("g");
+    const last = digits[digits.length - 1];
+    return {
+      segs: [...last.querySelectorAll("polygon")].map((p) => p.classList.contains("on")),
+      dp: last.querySelector("circle").classList.contains("on"),
+    };
+  });
+  ok(`glass marks overflow with ']' = a+b+c+d (${marker.segs.map(Number).join("")})`,
+    marker.segs.slice(0, 4).every(Boolean) && !marker.segs.slice(4).some(Boolean) && !marker.dp);
+
+  await bp.locator(".module button", { hasText: "Matrix" }).click();
+  await bp.waitForTimeout(150);
+  const matrixPixels = () => bp.locator(".matrix canvas").evaluate((c) => {
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let lit = 0, hash = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 100 || d[i + 1] > 100 || d[i + 2] > 100) { lit++; hash = (hash * 31 + i) >>> 0; }
+    }
+    return { lit, hash };
+  });
+  const m0 = await matrixPixels();
+  ok(`matrix draws the windowed row (${m0.lit} lit dots)`, m0.lit > 100);
+
+  await bp.keyboard.press("G"); await bp.keyboard.type(">"); // g + WIN>
+  await bp.waitForTimeout(200);
+  const m1 = await matrixPixels();
+  ok("matrix scrolls with the window keys (it used to ignore them)", m1.hash !== m0.hash);
+
+  await bp.keyboard.press("G"); await bp.keyboard.type("<"); // g + <WIN
+  await bp.waitForTimeout(200);
+  const m2 = await matrixPixels();
+  ok("…and scrolls back to the first window", m2.hash === m0.hash);
+
+  await bp.locator(".module button", { hasText: "7-Seg" }).click();
+  await bp.waitForTimeout(120);
+
   // The aux OLED is a real 128x32 panel drawn with the 5x7 font (21 chars x 4
   // rows == App::aux_lines()). Fixed aspect, so it can never change height, and
   // it must actually light pixels rather than render an empty canvas.

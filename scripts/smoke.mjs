@@ -31,6 +31,11 @@ function newCalc(ex, prec = 256) {
     pressShift: (which) => ex.cm_press_shift(app, which === "f" ? 0 : 1),
     setKeymap: (i) => ex.cm_set_keymap(app, i),
     reseed: (hi, lo) => ex.cm_reseed(app, hi, lo),
+    textRow: (i) => { const n = ex.cm_text_row(app, i);
+      return n === 0 ? "" : dec.decode(new Uint8Array(ex.memory.buffer, ex.cm_out_ptr(), n)); },
+    segRow: (i) => { const p = ex.cm_scratch(); ex.cm_seg_rows(app, p);
+      return [...new Uint8Array(ex.memory.buffer, p, 48).slice(i * 16, i * 16 + 16)]; },
+    winR: () => { ex.cm_press(app, 4, 1); ex.cm_press(app, 2, 5); },
     xFull: () => {
       // Getter fills an internal growable buffer and returns its length; read the
       // pointer AFTER the call (the Vec may realloc / memory may grow).
@@ -106,6 +111,40 @@ function ran(seedHi, seedLo) {
   check("RAN# is produced", a.length > 0, true);
   check(`different seeds give different RAN# (${a.slice(0, 8)} vs ${b.slice(0, 8)})`, a !== b, true);
   check("same seed is reproducible (SEED key contract)", a, a2);
+}
+
+// Display windowing (calcumaker@c29d754). text_rows() is the *displayed* row, so
+// the dot-matrix module sees the same 15 digits + `>` overflow marker the glass
+// does, and the window keys scroll both. Before this, the matrix silently
+// truncated and could not scroll at all.
+const OVERFLOW = 0x0f;
+const X = 2; // bottom row
+{
+  const c = newCalc(ex);
+  c.press(3, 6); c.press(3, 7); c.press(4, 5); // 4 2 ENTER — fits the row
+  check("a fitting value carries no marker", c.textRow(X).includes(">"), false);
+  check("…and no overflow byte on the glass", c.segRow(X)[15] === OVERFLOW, false);
+  c.free();
+}
+{
+  const c = newCalc(ex);
+  c.press(2, 7); c.press(4, 6); c.press(4, 6); c.press(4, 1); c.press(2, 6); // 500 g x!
+  const t0 = c.textRow(X), s0 = c.segRow(X);
+  check(`matrix row is windowed to the row width (${t0.length} chars)`, t0.length, 16);
+  check(`matrix row carries the overflow marker (${JSON.stringify(t0.slice(-4))})`, t0.endsWith(">"), true);
+  check("glass agrees: last cell is the overflow byte", s0[15], OVERFLOW);
+
+  c.winR();
+  const t1 = c.textRow(X), s1 = c.segRow(X);
+  check("the window scrolls the matrix text too", t1 !== t0, true);
+  check("scrolled window still marks more to the right", t1.endsWith(">"), true);
+  check("glass agrees on the scrolled window", s1[15], OVERFLOW);
+
+  for (let i = 0; i < 200; i++) c.winR(); // clamps at the last window
+  const tN = c.textRow(X), sN = c.segRow(X);
+  check("last window has nothing to its right", tN.includes(">"), false);
+  check("…and no overflow byte", sN[15] === OVERFLOW, false);
+  c.free();
 }
 
 console.log(failures === 0 ? "\nM0 GREEN — engine runs in wasm." : `\n${failures} FAILURE(S)`);
