@@ -129,11 +129,11 @@ async function main() {
   status.className = "status";
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
-  status.title = "Click to copy X";
   status.addEventListener("click", () => {
     navigator.clipboard?.writeText(cm.xFull()).then(() => {
-      status.dataset.copied = "1";
-      setTimeout(() => delete status.dataset.copied, 900);
+      status.textContent = "✓ copied to clipboard";
+      status.classList.add("copied");
+      setTimeout(() => { status.classList.remove("copied"); render(); }, 900);
     });
   });
 
@@ -153,7 +153,9 @@ async function main() {
     annG.classList.toggle("on", shift === "g");
     aux.textContent = [0, 1, 2, 3].map((i) => cm.auxLine(i)).join("\n");
     const msg = cm.message();
-    status.textContent = msg ? msg : `x = ${cm.xFull()}`;
+    const text = msg ? msg : `x = ${cm.xFull()}`;
+    status.textContent = text;
+    status.title = `${text}\n(click to copy X)`; // full value on hover; visually one-line
   }
 
   help.addEventListener("click", () => overlay.toggle());
@@ -199,6 +201,8 @@ function buildHelpOverlay() {
       </ul>
       <p>Click any key on the faceplate too. The f/face/g legends come straight
       from the engine's keymap.</p>
+      <p class="build">build · web <code>${__CM_WEB_SHA__}</code> · engine (core)
+      <code>${__CM_CORE_SHA__}</code> · ${__CM_BUILT_AT__}</p>
     </div>`;
   el.addEventListener("click", (e) => { if (e.target === el) toggle(); });
   const toggle = () => { el.hidden = !el.hidden; };

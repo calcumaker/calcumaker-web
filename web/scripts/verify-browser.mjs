@@ -86,11 +86,19 @@ for (const p of palettes) {
 }
 ok(`screenshot each matrix palette (${palettes.length})`, palettes.length === 4);
 
-// Help overlay via '?'.
+// Help overlay via '?', with build versions (web + engine SHAs).
 await page.keyboard.press("Shift+Slash");
 ok("help overlay opens on ?", await page.locator(".overlay .overlay-card").isVisible());
+ok("help shows build versions (web + engine)", (await page.locator(".overlay p.build code").count()) === 2);
 await page.keyboard.press("Escape");
 ok("help overlay closes on Esc", !(await page.locator(".overlay").isVisible()));
+
+// Long value stays one line (status capped, not wrapped).
+await page.locator(".module button", { hasText: "7-Seg" }).click();
+for (const k of "2.0") await page.keyboard.press(k);
+await page.keyboard.press("Q"); // sqrt(2): ~77 digits
+const stH = (await page.locator(".status").boundingBox()).height;
+ok(`status stays one line for a long value (${Math.round(stH)}px)`, stH < 28);
 
 ok(`no page errors (${errors.length})`, errors.length === 0);
 if (errors.length) console.log(errors.join("\n"));
