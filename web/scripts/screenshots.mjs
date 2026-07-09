@@ -28,7 +28,10 @@ await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForSelector(".seg-row");
 
 // Showcase value: HEX DEADBEEF — fills the row, shows hex letters on both modules.
+// ENTER commits it, so the entry cursor `_` isn't left trailing the value.
 for (const k of "Hdeadbeef") await page.keyboard.press(k);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(150);
 
 await mkdir(DOCS, { recursive: true });
 await page.locator("#faceplate").screenshot({ path: join(DOCS, "screenshot-7seg.png") });
