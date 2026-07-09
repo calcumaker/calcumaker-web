@@ -38,15 +38,27 @@ in **[`engine.lock`](engine.lock)** — one line, the engine commit SHA — and 
 builds *that* ref, never "whatever HEAD happens to be". A bundle is therefore
 reproducible from the commit that produced it.
 
-It updates itself:
+It updates itself, and needs **no secret to do so**:
 
-1. A push to `calcumaker` touching the engine (`calcumaker-core`,
-   `gmp-mpfr-nostd`, or the matrix font) fires an `engine-updated`
-   `repository_dispatch` at this repo (see `notify-web.yml` there; needs a
-   `WEB_DISPATCH_TOKEN` secret with `actions: write` here).
-2. This repo rebuilds against that SHA and runs every gate.
-3. **Only if they all pass** does CI commit the `engine.lock` bump and publish.
+1. **Pull (always on).** [`engine-watch.yml`](.github/workflows/engine-watch.yml)
+   runs hourly, compares `engine.lock` with `calcumaker`'s HEAD, and when they
+   differ dispatches `release-bundle` at that SHA. Dispatching a workflow in *our
+   own* repo only needs the built-in `GITHUB_TOKEN`.
+2. **Push (optional, instant).** `calcumaker`'s `notify-web.yml` can fire an
+   `engine-updated` `repository_dispatch` the moment the engine moves. That is a
+   *cross-repo* call, so it needs a PAT in a `WEB_DISPATCH_TOKEN` secret **on
+   `calcumaker`**. Without it that job warns and skips — the hourly watcher still
+   picks the change up.
+3. Either way, this repo rebuilds against that SHA and runs every gate, and
+   **only if they all pass** does CI commit the `engine.lock` bump and publish.
    A bad engine commit leaves the pin alone and goes red, naming the commit.
+
+To add the instant path (from a machine that can mint a token):
+
+```sh
+# fine-grained PAT on calcumaker/calcumaker-web with Actions: read+write
+gh secret set WEB_DISPATCH_TOKEN -R calcumaker/calcumaker
+```
 
 The bot's push uses `GITHUB_TOKEN`, which doesn't retrigger workflows, so it
 can't loop. To adopt an engine commit by hand:

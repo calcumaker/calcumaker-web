@@ -1,0 +1,60 @@
+name: engine-watch
+
+# Keeps engine.lock moving without any cross-repo credential.
+#
+# calcumaker/notify-web.yml can push us an `engine-updated` dispatch the instant
+# the engine moves, but that needs a PAT stored over there. This is the pull half:
+# on a schedule we compare engine.lock against calcumaker's HEAD and, when they
+# differ, dispatch release-bundle at that SHA. Dispatching a workflow in *our own*
+# repo only needs the built-in GITHUB_TOKEN, so no secret exists to leak or rotate.
+#
+# release-bundle then runs every gate and adopts the SHA only if they all pass.
+
+on:
+  schedule:
+    - cron: "17 * * * *" # hourly, off the hour (GitHub delays on-the-hour crons)
+  workflow_dispatch:
+
+permissions:
+  actions: write # dispatch release-bundle in this repo
+  contents: read
+
+concurrency:
+  group: engine-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare engine.lock with calcumaker HEAD
+        id: cmp
+        run: |
+          pinned="$(tr -d '[:space:]' < engine.lock)"
+          head="$(git ls-remote https://github.com/calcumaker/calcumaker.git refs/heads/main | cut -f1)"
+          if [ -z "$head" ]; then
+            echo "::error::could not read calcumaker HEAD"
+            exit 1
+          fi
+          echo "pinned ${pinned:0:7} / head ${head:0:7}"
+          if [ "$pinned" = "$head" ]; then
+            echo "engine.lock is current — nothing to do"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "head=$head" >> "$GITHUB_OUTPUT"
+          fi
+
+      # release-bundle builds this SHA, runs the gates, and commits the
+      # engine.lock bump only if they all pass. A red run leaves the pin alone.
+      - name: Dispatch a build against the new engine
+        if: steps.cmp.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ steps.cmp.outputs.head }}
+        run: |
+          gh workflow run release-bundle.yml --ref main -f calcumaker_ref="$HEAD_SHA"
+          echo "dispatched release-bundle against ${HEAD_SHA:0:7}"
