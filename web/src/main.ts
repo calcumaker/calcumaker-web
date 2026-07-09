@@ -7,6 +7,7 @@ import "./styles.css";
 import { Calcumaker } from "./wasm/calcumaker";
 import { createDisplay } from "./display/seg7";
 import { createMatrix, MATRIX_PALETTES } from "./display/matrix";
+import { createOled } from "./display/oled";
 import { createKeypad, cellFor } from "./keypad/keypad";
 
 const SKINS = [
@@ -139,9 +140,10 @@ async function main() {
   screen.className = "screen";
   const display = createDisplay();
   const matrix = createMatrix();
-  const aux = document.createElement("pre");
-  aux.className = "aux";
-  screen.append(display.el, matrix.el, aux);
+  // The aux OLED is a real 128x32 panel: same 5x7 font, 21 chars x 4 rows —
+  // exactly the shape of App::aux_lines().
+  const oled = createOled();
+  screen.append(display.el, matrix.el, oled.el);
 
   const status = document.createElement("div");
   status.className = "status";
@@ -175,7 +177,7 @@ async function main() {
     keypad.setShift(shift);
     annF.classList.toggle("on", shift === "f");
     annG.classList.toggle("on", shift === "g");
-    aux.textContent = [0, 1, 2, 3].map((i) => cm.auxLine(i)).join("\n");
+    oled.update([0, 1, 2, 3].map((i) => cm.auxLine(i)));
     const msg = cm.message();
     if (msg) {
       statusVal.textContent = msg;

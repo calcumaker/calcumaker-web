@@ -130,6 +130,12 @@ jobs:
         working-directory: calcumaker-web/web
         run: npm run build
 
+      # The 5x7 font must stay byte-identical to the firmware's (font.rs), or the
+      # emulator stops showing what the hardware would. Needs the sibling checkout.
+      - name: Font parity with firmware
+        working-directory: calcumaker-web/web
+        run: npm run verify:font
+
       - name: Browser verification (Playwright)
         working-directory: calcumaker-web/web
         run: |

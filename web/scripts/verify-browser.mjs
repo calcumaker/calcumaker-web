@@ -137,23 +137,47 @@ ok("external links are rel=noopener",
   ok("tooltip states the length rather than dumping 1135 chars",
     /1135 characters/.test(st.title ?? "") && !/1220136825991110068701/.test(st.title ?? ""));
 
-  // The aux OLED is a fixed 128x32 panel (4 rows). It must not grow when a long
-  // value wraps into row 4 — that used to shove the keypad down 17px.
-  const full = await bp.evaluate(() => ({
-    aux: Math.round(document.querySelector(".aux").getBoundingClientRect().height),
-    keypadTop: Math.round(document.querySelector(".keypad").getBoundingClientRect().top),
-    rows: document.querySelector(".aux").textContent.split("\n").length,
-  }));
+  // The aux OLED is a real 128x32 panel drawn with the 5x7 font (21 chars x 4
+  // rows == App::aux_lines()). Fixed aspect, so it can never change height, and
+  // it must actually light pixels rather than render an empty canvas.
+  const full = await bp.evaluate(() => {
+    const c = document.querySelector(".oled canvas");
+    const ctx = c.getContext("2d");
+    const { data } = ctx.getImageData(0, 0, c.width, c.height);
+    let lit = 0;
+    for (let i = 0; i < data.length; i += 4) if (data[i] > 150 && data[i + 2] > 150) lit++;
+    return {
+      w: c.width, h: c.height, lit,
+      box: Math.round(document.querySelector(".oled").getBoundingClientRect().height),
+      keypadTop: Math.round(document.querySelector(".keypad").getBoundingClientRect().top),
+      aria: document.querySelector(".oled").getAttribute("aria-label") ?? "",
+    };
+  });
+  // 128x32 active area + a 2px bezel each side, at 6 backing px per OLED pixel.
+  ok(`aux OLED canvas is 128x32 (+bezel) at 6x (${full.w}x${full.h})`,
+    full.w === (128 + 4) * 6 && full.h === (32 + 4) * 6);
+  ok(`aux OLED lights pixels (${full.lit})`, full.lit > 500);
+  ok("aux OLED exposes its text to screen readers", /16C/.test(full.aria));
+
   await bp.keyboard.press("X"); // CLx — empties the aux body rows
   await bp.waitForTimeout(200);
   const empty = await bp.evaluate(() => ({
-    aux: Math.round(document.querySelector(".aux").getBoundingClientRect().height),
+    box: Math.round(document.querySelector(".oled").getBoundingClientRect().height),
     keypadTop: Math.round(document.querySelector(".keypad").getBoundingClientRect().top),
   }));
-  ok(`aux OLED renders exactly 4 rows (${full.rows})`, full.rows === 4);
-  ok(`aux OLED is fixed height, full vs empty (${full.aux} == ${empty.aux})`, full.aux === empty.aux);
+  ok(`aux OLED is fixed height, full vs empty (${full.box} == ${empty.box})`, full.box === empty.box);
   ok(`aux OLED doesn't shift the keypad (${full.keypadTop} == ${empty.keypadTop})`,
     full.keypadTop === empty.keypadTop);
+
+  // Lowercase must render as lowercase (the firmware font used to fold case).
+  await bp.keyboard.press("1"); await bp.keyboard.press("Enter");
+  await bp.keyboard.press("0"); await bp.keyboard.press("/");
+  await bp.waitForTimeout(200);
+  const msgAria = await bp.evaluate(() =>
+    document.querySelector(".oled").getAttribute("aria-label") ?? "");
+  ok(`aux OLED shows lowercase messages (${JSON.stringify(msgAria.slice(-16))})`,
+    /divide by zero/.test(msgAria));
+
   await bp.close();
 }
 

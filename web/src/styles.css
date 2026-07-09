@@ -88,27 +88,18 @@ body {
 #faceplate[data-module="seg"] .matrix { display: none; }
 #faceplate[data-module="matrix"] .display { display: none; }
 #faceplate[data-module="matrix"] .screen { background: #05070a; }
-#faceplate[data-module="matrix"] .aux { color: #8fb0c8; }
-
-.seg { fill: var(--seg-off); }
-.seg.on {
-  fill: var(--seg-on);
-  filter: drop-shadow(0 0 var(--glow) var(--seg-on));
-}
-
-.aux {
+#faceplate[data-module="matrix"] /* Aux OLED: a 0.91" 128x32 panel. Fixed 4:1 aspect, so it can never change
+   height with content. Small on purpose — it's a 1" display beside a big
+   7-segment stack, not a text pane. */
+.oled {
   margin: 10px 0 0; padding-top: 10px;
   border-top: 1px dashed rgb(255, 255, 255, .12);
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 12px; line-height: 1.4; color: var(--seg-on); opacity: .8;
-  /* The aux OLED is a fixed 128x32 panel = 4 rows of 8px, and the engine always
-     emits exactly 4 lines (App::aux_lines). Pin the box to 4 rows: the old
-     min-height (4.2em) only covered 3, so a long value wrapping into row 4 grew
-     the panel and shoved the keypad down. content-box so padding/border sit
-     outside the 4-row height and it survives the font-size change on mobile. */
-  box-sizing: content-box;
-  height: calc(4 * 1.4em);
-  white-space: pre; overflow: hidden;
+}
+.oled canvas {
+  display: block;
+  width: min(352px, 100%); height: auto;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgb(0, 0, 0, .8), 0 2px 10px rgb(0, 0, 0, .5);
 }
 
 .status {
@@ -171,7 +162,7 @@ body {
 #faceplate[data-skin="led-amber"] { --screen-bg: #150d02; --seg-on: #ffb020; --seg-off: rgb(255,176,32,.07); --glow: 6px; }
 #faceplate[data-skin="vfd-cyan"]  { --screen-bg: #02110f; --seg-on: #74f4ff; --seg-off: rgb(116,244,255,.10); --glow: 10px; }
 #faceplate[data-skin="lcd"]       { --screen-bg: #b3bba4; --seg-on: #1b2015; --seg-off: rgb(27,32,21,.12); --glow: 0px; }
-#faceplate[data-skin="lcd"] .aux { color: #1b2015; border-top-color: rgb(0,0,0,.2); }
+#faceplate[data-skin="lcd"] .oled { border-top-color: rgb(0,0,0,.2); }
 /* On the matrix module the 7-seg skin vars don't apply; keep the screen dark. */
 #faceplate[data-module="matrix"][data-skin] { --screen-bg: #05070a; }
 
@@ -230,7 +221,6 @@ body {
   /* Sized so the widest face (ENTER/WSIZE) fits a ~33px key without clipping. */
   .face { font-size: clamp(7px, 2.2vw, 12px); letter-spacing: -.02em; }
   .leg { font-size: clamp(5px, 1.6vw, 8px); }
-  .aux { font-size: 11px; }
   .status { font-size: 12px; }
 }
 /* Very narrow (small phones ≤360px): drop the tiny f/g shift legends to keep the
@@ -255,7 +245,7 @@ body {
   .annun span { padding: 1px 6px; }
   .screen { padding: 6px 10px; }
   .seg-row { height: 24px; }
-  .aux { display: none; }                    /* OLED panel yields the space */
+  .oled { display: none; }                   /* the 1" panel yields the space */
   .status { font-size: 11px; min-height: 1em; }
   .keypad { gap: 3px; }
   .key { aspect-ratio: auto; height: 34px; padding: 1px; border-radius: 5px; gap: 0; }

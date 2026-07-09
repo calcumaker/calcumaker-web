@@ -12,7 +12,9 @@
     "lint:ts": "eslint . --max-warnings 0",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix",
-    "build:wasm": "../scripts/build-wasm.sh"
+    "build:wasm": "../scripts/build-wasm.sh",
+    "verify:font": "node scripts/verify-font.mjs",
+    "verify": "node scripts/verify-font.mjs && node scripts/verify-browser.mjs"
   },
   "dependencies": {
     "@bjorn3/browser_wasi_shim": "^0.3.0"

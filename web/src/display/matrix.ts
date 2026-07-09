@@ -6,38 +6,16 @@
 //
 // Rendered on <canvas> (2304 dots suit a pixel array + glow better than SVG).
 
+import { glyph5x7 } from "./font5x7";
+
 const COLS = 96;
 const ROWS = 24; // 3 stack rows × 8 px
 const PITCH = 6; // glyph advance (5 wide + 1 gap)
 const STACK_H = 8;
 
-// Ported from font.rs glyph(): each entry is 5 column bitmaps, bit0 = top row.
-const GLYPHS: Record<string, number[]> = {
-  " ": [0x00, 0x00, 0x00, 0x00, 0x00],
-  "0": [0x3e, 0x51, 0x49, 0x45, 0x3e],
-  "1": [0x00, 0x42, 0x7f, 0x40, 0x00],
-  "2": [0x42, 0x61, 0x51, 0x49, 0x46],
-  "3": [0x21, 0x41, 0x45, 0x4b, 0x31],
-  "4": [0x18, 0x14, 0x12, 0x7f, 0x10],
-  "5": [0x27, 0x45, 0x45, 0x45, 0x39],
-  "6": [0x3c, 0x4a, 0x49, 0x49, 0x30],
-  "7": [0x01, 0x71, 0x09, 0x05, 0x03],
-  "8": [0x36, 0x49, 0x49, 0x49, 0x36],
-  "9": [0x06, 0x49, 0x49, 0x29, 0x1e],
-  A: [0x7e, 0x11, 0x11, 0x11, 0x7e],
-  B: [0x7f, 0x49, 0x49, 0x49, 0x36],
-  C: [0x3e, 0x41, 0x41, 0x41, 0x22],
-  D: [0x7f, 0x41, 0x41, 0x22, 0x1c],
-  E: [0x7f, 0x49, 0x49, 0x49, 0x41],
-  F: [0x7f, 0x09, 0x09, 0x09, 0x01],
-  "-": [0x08, 0x08, 0x08, 0x08, 0x08],
-  ".": [0x00, 0x40, 0x40, 0x00, 0x00],
-};
-const FALLBACK = [0x7f, 0x41, 0x41, 0x41, 0x7f]; // hollow box, matching font.rs
-
-function glyph(ch: string): number[] {
-  return GLYPHS[ch.toUpperCase()] ?? FALLBACK;
-}
+// Glyphs come from the shared 5×7 table (web/src/display/font5x7.ts), which
+// mirrors calcumaker-matrix-fw/src/font.rs byte-for-byte — including lowercase,
+// now that the firmware carries the full ASCII range.
 
 type Rgb = [number, number, number];
 // Palettes. "rgb" mirrors the firmware's per-stack-row `tint` (green/amber/blue),
@@ -77,7 +55,7 @@ export function createMatrix(): Matrix {
     for (let r = 0; r < 3; r++) {
       let x = 0;
       for (const ch of textRows[r] ?? "") {
-        const g = glyph(ch);
+        const g = glyph5x7(ch);
         for (let col = 0; col < 5; col++) {
           for (let ry = 0; ry < 7; ry++) {
             if (g[col] & (1 << ry)) {
