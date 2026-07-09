@@ -130,6 +130,31 @@ for (const w of [320, 360, 390]) {
   await mp.close();
 }
 
+// Tap behaviour: double-tap-to-zoom disabled via touch-action, while pinch-zoom
+// stays available (we must NOT set user-scalable=no / maximum-scale — a11y).
+const ta = (sel) => page.evaluate((s) => getComputedStyle(document.querySelector(s)).touchAction, sel);
+ok("body disables double-tap zoom (touch-action: manipulation)", (await ta("body")) === "manipulation");
+ok("keys disable double-tap zoom", (await ta(".key")) === "manipulation");
+const vp = await page.evaluate(() => document.querySelector('meta[name="viewport"]')?.content ?? "");
+ok(`viewport still allows pinch-zoom (${vp})`, !/user-scalable\s*=\s*no|maximum-scale/i.test(vp));
+
+// Landscape (short viewport): the display AND the whole keypad must be on screen
+// without scrolling — width-based queries don't fire at ~844px wide.
+for (const [w, h] of [[844, 390], [667, 375]]) {
+  const lp = await browser.newPage({ viewport: { width: w, height: h } });
+  await lp.goto(base, { waitUntil: "networkidle" });
+  await lp.waitForSelector(".seg-row");
+  const r = await lp.evaluate(() => ({
+    keypadBottom: Math.round(document.querySelector(".keypad").getBoundingClientRect().bottom),
+    ih: window.innerHeight,
+    segVisible: document.querySelector(".seg-row").getBoundingClientRect().height > 8,
+  }));
+  ok(`landscape ${w}x${h}: keypad fully visible (bottom ${r.keypadBottom} <= ${r.ih}) and display shown`,
+    r.keypadBottom <= r.ih && r.segVisible);
+  if (w === 844) await lp.screenshot({ path: join(SHOTS, "landscape-844.png") });
+  await lp.close();
+}
+
 ok(`no page errors (${errors.length})`, errors.length === 0);
 if (errors.length) console.log(errors.join("\n"));
 

@@ -16,6 +16,10 @@ body {
   place-items: center;
   background: radial-gradient(120% 120% at 50% 0%, #2c3038, #0c0d10 70%);
   padding: 24px;
+  /* Kill double-tap-to-zoom (a calculator gets tapped fast and repeatedly).
+     `manipulation` still allows pinch-zoom, so accessibility is preserved —
+     unlike `user-scalable=no`, which we deliberately do NOT set. */
+  touch-action: manipulation;
 }
 
 /* ---- faceplate --------------------------------------------------------- */
@@ -125,6 +129,10 @@ body {
   min-width: 0; overflow: hidden;
   box-shadow: 0 2px 0 #0c0d10, inset 0 1px 0 rgba(255, 255, 255, .07);
   transition: transform .04s, box-shadow .04s;
+  /* Fast repeated taps: no zoom, no grey flash, no text selection. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 .key:active { transform: translateY(2px); box-shadow: 0 0 0 #0c0d10; }
 .key.blank { visibility: hidden; }
@@ -216,4 +224,28 @@ body {
 @media (max-width: 360px) {
   .leg { display: none; }
   .keypad[data-shift] .face { opacity: 1; }
+}
+
+/* Short viewports (phone landscape). Keyed on HEIGHT, not width — a landscape
+   phone is ~844px wide, so the width queries above don't fire and it would
+   otherwise get desktop sizing (64px seg rows, 92px keys) in a 390px-tall
+   screen. Goal: display + full keypad visible at once, without scrolling. */
+@media (max-height: 500px) and (orientation: landscape) {
+  body { padding: 4px; min-height: 0; }
+  #faceplate { padding: 6px 10px; gap: 5px; border-radius: 10px; }
+  .bar { gap: 4px 8px; }
+  .brand b { font-size: 14px; }
+  .switch button { padding: 3px 8px; font-size: 11px; }
+  .skin-select { font-size: 11px; padding: 3px 6px; }
+  .help-btn { width: 22px; height: 22px; }
+  .annun span { padding: 1px 6px; }
+  .screen { padding: 6px 10px; }
+  .seg-row { height: 24px; }
+  .aux { display: none; }                    /* OLED panel yields the space */
+  .status { font-size: 11px; min-height: 1em; }
+  .keypad { gap: 3px; }
+  .key { aspect-ratio: auto; height: 34px; padding: 1px; border-radius: 5px; gap: 0; }
+  .face { font-size: 11px; letter-spacing: 0; }
+  .leg { font-size: 6.5px; }
+  .colophon { margin-top: 4px; font-size: 10px; gap: 4px 10px; }
 }
