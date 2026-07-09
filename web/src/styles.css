@@ -28,6 +28,9 @@ body {
 
 /* ---- faceplate --------------------------------------------------------- */
 #faceplate {
+  /* One 7-segment digit's height. The aux OLED is sized from it (a real 0.91"
+     panel is roughly half a 0.56" digit tall), so they stay in proportion. */
+  --seg-row-h: 64px;
   width: min(980px, 100%);
   background: linear-gradient(180deg, var(--case), var(--case-edge));
   border: 1px solid #000;
@@ -81,7 +84,7 @@ body {
   box-shadow: inset 0 3px 16px rgb(0, 0, 0, .7);
 }
 .display { display: flex; flex-direction: column; gap: 6px; }
-.seg-row { display: block; height: 64px; }
+.seg-row { display: block; height: var(--seg-row-h); }
 
 /* RGB dot-matrix module */
 .matrix canvas { display: block; width: 100%; height: auto; image-rendering: auto; }
@@ -97,18 +100,22 @@ body {
   fill: var(--seg-on);
   filter: drop-shadow(0 0 var(--glow) var(--seg-on));
 }
-#faceplate[data-module="matrix"] /* Aux OLED: a 0.91" 128x32 panel. Fixed 4:1 aspect, so it can never change
-   height with content. Small on purpose — it's a 1" display beside a big
-   7-segment stack, not a text pane. */
+/* Aux OLED: the 0.91" SSD1306 module — board 30 x 11.5 mm, active glass
+   22.38 x 5.58 mm. Sized by HEIGHT from one 7-segment digit (0.56" = 14.22 mm),
+   so the two stay in proportion and the panel can never change height with
+   content. Dim, with a lot of dark bezel, so it doesn't compete with the display. */
 .oled {
-  margin: 10px 0 0; padding-top: 10px;
-  border-top: 1px dashed rgb(255, 255, 255, .12);
+  /* Real boards leave a clear gap between the 7-seg glass and the aux module.
+     Longhand: a `margin` shorthand carrying calc(var(...)) computes to 0 here. */
+  margin-top: calc(var(--seg-row-h) * 0.55);
 }
 .oled canvas {
   display: block;
-  width: min(264px, 100%); height: auto;
-  border-radius: 3px;
-  box-shadow: 0 0 0 1px rgb(0, 0, 0, .8), 0 2px 10px rgb(0, 0, 0, .5);
+  /* The module is 11.5 mm tall; a 0.56" digit is 14.22 mm. Width follows from
+     the canvas's fixed 30:11.5 aspect. */
+  height: max(24px, calc(var(--seg-row-h) * 0.81));
+  width: auto;
+  border-radius: 2px;
 }
 
 .status {
@@ -178,7 +185,6 @@ body {
 #faceplate[data-skin="led-amber"] { --screen-bg: #150d02; --seg-on: #ffb020; --seg-off: rgb(255,176,32,.07); --glow: 6px; }
 #faceplate[data-skin="vfd-cyan"]  { --screen-bg: #02110f; --seg-on: #74f4ff; --seg-off: rgb(116,244,255,.10); --glow: 10px; }
 #faceplate[data-skin="lcd"]       { --screen-bg: #b3bba4; --seg-on: #1b2015; --seg-off: rgb(27,32,21,.12); --glow: 0px; }
-#faceplate[data-skin="lcd"] .oled { border-top-color: rgb(0,0,0,.2); }
 /* On the matrix module the 7-seg skin vars don't apply; keep the screen dark. */
 #faceplate[data-module="matrix"][data-skin] { --screen-bg: #05070a; }
 
@@ -223,7 +229,7 @@ body {
 /* ---- responsive -------------------------------------------------------- */
 @media (max-width: 640px) {
   body { padding: 6px; }
-  #faceplate { padding: 10px; border-radius: 12px; gap: 8px; }
+  #faceplate { --seg-row-h: 34px; padding: 10px; border-radius: 12px; gap: 8px; }
   .bar { flex-wrap: wrap; gap: 6px 8px; }
   .brand { width: 100%; }                 /* brand on its own row */
   .brand b { font-size: 16px; }
@@ -231,7 +237,6 @@ body {
   .switch button { padding: 4px 9px; font-size: 12px; }
   .skin-select, .help-btn { font-size: 12px; }
   .screen { padding: 10px 12px; }
-  .seg-row { height: 34px; }
   .keypad { gap: 3px; }
   .key { padding: 2px 1px; border-radius: 6px; gap: 1px; }
   /* Sized so the widest face (ENTER/WSIZE) fits a ~33px key without clipping. */
@@ -252,7 +257,7 @@ body {
    screen. Goal: display + full keypad visible at once, without scrolling. */
 @media (max-height: 500px) and (orientation: landscape) {
   body { padding: 4px; min-height: 0; }
-  #faceplate { padding: 6px 10px; gap: 5px; border-radius: 10px; }
+  #faceplate { --seg-row-h: 24px; padding: 6px 10px; gap: 5px; border-radius: 10px; }
   .bar { gap: 4px 8px; }
   .brand b { font-size: 14px; }
   .switch button { padding: 3px 8px; font-size: 11px; }
@@ -260,7 +265,6 @@ body {
   .help-btn { width: 22px; height: 22px; }
   .annun span { padding: 1px 6px; }
   .screen { padding: 6px 10px; }
-  .seg-row { height: 24px; }
   .oled { display: none; }                   /* the 1" panel yields the space */
   .status { font-size: 11px; min-height: 1em; }
   .keypad { gap: 3px; }

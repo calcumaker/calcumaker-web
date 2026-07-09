@@ -70,9 +70,26 @@ const shades = await page.evaluate(() => ({
 }));
 ok("2U ENTER is a different shade from the 1U keys", shades.enter !== shades.plain);
 
-// The aux OLED is a 0.91" panel; it must not read as a full-width text pane.
-const oledW = Math.round((await page.locator(".oled canvas").boundingBox()).width);
-ok(`aux OLED is small (${oledW}px <= 280)`, oledW <= 280);
+// The aux OLED is the 0.91" SSD1306 module: board 30 x 11.5 mm, active glass
+// 22.38 x 5.58 mm, beside a 0.56" (14.22 mm) digit. Assert those proportions and
+// the gap below the glass. The margin assertion also guards a real bug: a stray
+// selector fragment once scoped the `.oled` rule to the matrix module only, so
+// in 7-seg mode the panel sat flush against the display with margin-top 0.
+const oledGeom = await page.evaluate(() => {
+  const digit = document.querySelector(".seg-row").getBoundingClientRect().height;
+  const c = document.querySelector(".oled canvas").getBoundingClientRect();
+  const disp = document.querySelector(".display").getBoundingClientRect();
+  return { digit, w: c.width, h: c.height, gap: c.top - disp.bottom,
+    marginTop: parseFloat(getComputedStyle(document.querySelector(".oled")).marginTop) };
+});
+const near = (a, b, tol) => Math.abs(a - b) <= tol;
+ok(`aux OLED is small (${Math.round(oledGeom.w)}px <= 280)`, oledGeom.w <= 280);
+ok(`module aspect ~30:11.5 (${(oledGeom.w / oledGeom.h).toFixed(2)} vs 2.61)`,
+  near(oledGeom.w / oledGeom.h, 30 / 11.5, 0.05));
+ok(`module height is ~0.81 of a digit (${(oledGeom.h / oledGeom.digit).toFixed(3)})`,
+  near(oledGeom.h / oledGeom.digit, 11.5 / 14.22, 0.03));
+ok(`aux OLED sits below the glass, in 7-seg mode (margin ${oledGeom.marginTop}px > 0)`,
+  oledGeom.marginTop > 0 && near(oledGeom.gap, oledGeom.marginTop, 1));
 
 // The moved host key must actually drive the moved function: 3 ENTER 4 x -> 3.
 {
@@ -233,9 +250,12 @@ ok("external links are rel=noopener",
       aria: document.querySelector(".oled").getAttribute("aria-label") ?? "",
     };
   });
-  // 128x32 active area + a 2px bezel each side, at 6 backing px per OLED pixel.
-  ok(`aux OLED canvas is 128x32 (+bezel) at 6x (${full.w}x${full.h})`,
-    full.w === (128 + 4) * 6 && full.h === (32 + 4) * 6);
+  // 128x32 active glass at 6 backing px per OLED pixel, inside a module scaled by
+  // the real board:glass ratio (30/22.38 wide, 11.5/5.58 tall).
+  const expW = Math.round(128 * 6 * (30 / 22.38));
+  const expH = Math.round(32 * 6 * (11.5 / 5.58));
+  ok(`aux OLED canvas is the 30x11.5mm module around 128x32 glass (${full.w}x${full.h})`,
+    full.w === expW && full.h === expH);
   ok(`aux OLED lights pixels (${full.lit})`, full.lit > 500);
   ok("aux OLED exposes its text to screen readers", /16C/.test(full.aria));
 

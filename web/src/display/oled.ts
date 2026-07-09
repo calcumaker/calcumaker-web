@@ -17,10 +17,22 @@ const PITCH = 6; // 5 glyph columns + 1 gap
 const ROW_H = 8; // 7 glyph rows + 1 gap
 
 const DOT = 6; // backing-store px per OLED pixel
-const MARGIN = 2; // OLED px of dark glass around the active area (a real bezel)
-const W = (OLED_COLS + MARGIN * 2) * DOT;
-const H = (OLED_ROWS + MARGIN * 2) * DOT;
-const OFF = MARGIN * DOT;
+
+// Physical geometry of the 0.91" SSD1306 module, so the bezel is real rather
+// than a guess: the board is 30 x 11.5 mm and its active glass 22.38 x 5.58 mm.
+// The active area is therefore 74.6% of the module's width and 48.5% of its
+// height — a lot of dark bezel, which is why the panel reads as a small inset.
+const MODULE_MM = { w: 30, h: 11.5 };
+const ACTIVE_MM = { w: 22.38, h: 5.58 };
+/** One 7-segment digit is 0.56" = 14.22 mm tall; styles.css sizes from this. */
+export const MODULE_H_PER_DIGIT = MODULE_MM.h / 14.22; // ~0.809
+
+const ACTIVE_W = OLED_COLS * DOT;
+const ACTIVE_H = OLED_ROWS * DOT;
+const W = Math.round(ACTIVE_W * (MODULE_MM.w / ACTIVE_MM.w));
+const H = Math.round(ACTIVE_H * (MODULE_MM.h / ACTIVE_MM.h));
+const OFF_X = Math.round((W - ACTIVE_W) / 2);
+const OFF_Y = Math.round((H - ACTIVE_H) / 2);
 
 export interface Oled {
   el: HTMLElement;
@@ -62,26 +74,29 @@ export function createOled(): Oled {
 
   function draw(lines: string[]) {
     const grid = litGrid(lines);
-    ctx.fillStyle = "#04070c"; // unlit glass
+    ctx.fillStyle = "#0a0c11"; // module bezel / PCB
     ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#02040a"; // unlit glass (the active area)
+    ctx.fillRect(OFF_X, OFF_Y, ACTIVE_W, ACTIVE_H);
 
     // Unlit pixels: barely-there grid, the way a real OLED's dark pixels read.
-    ctx.fillStyle = "rgba(150,180,220,0.045)";
+    ctx.fillStyle = "rgba(140,170,210,0.028)";
     for (let y = 0; y < OLED_ROWS; y++) {
       for (let x = 0; x < OLED_COLS; x++) {
         if (grid[y][x]) continue;
-        ctx.fillRect(OFF + x * DOT, OFF + y * DOT, DOT - 1, DOT - 1);
+        ctx.fillRect(OFF_X + x * DOT, OFF_Y + y * DOT, DOT - 1, DOT - 1);
       }
     }
 
-    // Lit pixels: the classic cold-white SSD1306, with a little bloom.
-    ctx.shadowBlur = DOT * 0.9;
-    ctx.shadowColor = "rgba(190,225,255,0.85)";
-    ctx.fillStyle = "#dceaff";
+    // Lit pixels: cold-white SSD1306, deliberately dim — this is a small status
+    // inset beside the display, not a second display competing with it.
+    ctx.shadowBlur = DOT * 0.5;
+    ctx.shadowColor = "rgba(150,190,230,0.45)";
+    ctx.fillStyle = "#9db9d6";
     for (let y = 0; y < OLED_ROWS; y++) {
       for (let x = 0; x < OLED_COLS; x++) {
         if (!grid[y][x]) continue;
-        ctx.fillRect(OFF + x * DOT, OFF + y * DOT, DOT - 1, DOT - 1);
+        ctx.fillRect(OFF_X + x * DOT, OFF_Y + y * DOT, DOT - 1, DOT - 1);
       }
     }
     ctx.shadowBlur = 0;
