@@ -176,6 +176,20 @@ body {
   font-family: ui-monospace, Menlo, monospace; color: var(--gold);
   background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px;
 }
+.overlay-card p.build a { color: inherit; text-decoration: none; }
+.overlay-card p.build a:hover code { background: rgba(240, 194, 90, .18); }
+.overlay-card p.build.legal { margin-top: 6px; padding-top: 0; border-top: 0; }
+.overlay-card p.build.legal a { color: var(--blue); text-decoration: underline; }
+
+/* ---- colophon (attribution + AGPL source offer) ------------------------ */
+.colophon {
+  margin-top: 16px;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: 6px 14px;
+  font-size: 12px; color: #7d838e;
+}
+.colophon a { color: #9fb4d6; text-decoration: none; }
+.colophon a:hover { color: var(--gold); text-decoration: underline; }
 
 /* ---- responsive -------------------------------------------------------- */
 @media (max-width: 640px) {

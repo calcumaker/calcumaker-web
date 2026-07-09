@@ -182,6 +182,12 @@ async function main() {
   render();
 }
 
+/** A SHA as a link to its commit — plain text when the sha isn't a real one. */
+function commitLink(repo: string, sha: string): string {
+  if (!/^[0-9a-f]{7,40}$/.test(sha)) return `<code>${sha}</code>`;
+  return `<a href="https://github.com/calcumaker/${repo}/commit/${sha}" target="_blank" rel="noopener noreferrer"><code>${sha}</code></a>`;
+}
+
 function buildHelpOverlay() {
   const el = document.createElement("div");
   el.className = "overlay";
@@ -201,8 +207,13 @@ function buildHelpOverlay() {
       </ul>
       <p>Click any key on the faceplate too. The f/face/g legends come straight
       from the engine's keymap.</p>
-      <p class="build">build · web <code>${__CM_WEB_SHA__}</code> · engine (core)
-      <code>${__CM_CORE_SHA__}</code> · ${__CM_BUILT_AT__}</p>
+      <p class="build">build · web ${commitLink("calcumaker-web", __CM_WEB_SHA__)}
+      · engine (core) ${commitLink("calcumaker", __CM_CORE_SHA__)} · ${__CM_BUILT_AT__}</p>
+      <p class="build legal">© 2026 Yann Ramin ·
+      <a href="https://calcumaker.co" target="_blank" rel="noopener noreferrer">calcumaker.co</a> ·
+      <a href="https://github.com/calcumaker/calcumaker-web" target="_blank" rel="noopener noreferrer">Source</a> ·
+      <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">AGPL-3.0</a>
+      </p>
     </div>`;
   el.addEventListener("click", (e) => { if (e.target === el) toggle(); });
   const toggle = () => { el.hidden = !el.hidden; };

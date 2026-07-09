@@ -144,4 +144,9 @@ override the defaults.
 
 ## License
 
-AGPL-3.0 (matches the firmware; compatible with LGPLv3 GMP/MPFR).
+Copyright © 2026 Yann Ramin.
+
+[AGPL-3.0](LICENSE) (matches the firmware; compatible with LGPLv3 GMP/MPFR).
+Because the AGPL covers network use, the deployed page carries a visible
+**Source** link back to this repository (footer + help overlay), alongside the
+exact `calcumaker-web` and engine commit SHAs it was built from.

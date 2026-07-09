@@ -100,6 +100,20 @@ await page.keyboard.press("Q"); // sqrt(2): ~77 digits
 const stH = (await page.locator(".status").boundingBox()).height;
 ok(`status stays one line for a long value (${Math.round(stH)}px)`, stH < 28);
 
+// Colophon: attribution + AGPL source offer must be present (AGPL §13) and the
+// outbound links must point where we claim.
+const colophon = (await page.locator("footer.colophon").textContent()) ?? "";
+ok("colophon shows copyright", /©\s*2026\s+Yann Ramin/.test(colophon));
+ok("colophon names AGPL-3.0", /AGPL-3\.0/.test(colophon));
+const href = (sel) => page.locator(sel).first().getAttribute("href");
+ok("links to calcumaker.co", (await href('footer.colophon a[href*="calcumaker.co"]')) === "https://calcumaker.co");
+ok("links to the GitHub source",
+  (await href('footer.colophon a[href*="github.com"]')) === "https://github.com/calcumaker/calcumaker-web");
+ok("links to the AGPL text",
+  (await href('footer.colophon a[href*="gnu.org"]')) === "https://www.gnu.org/licenses/agpl-3.0.html");
+ok("external links are rel=noopener",
+  (await page.locator('footer.colophon a[rel~="noopener"]').count()) === 3);
+
 // Responsive: no horizontal overflow at portrait phone widths (regression guard
 // for the keypad forcing the faceplate wider than the screen).
 for (const w of [320, 360, 390]) {
