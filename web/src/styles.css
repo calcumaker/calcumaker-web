@@ -117,6 +117,10 @@ body {
 .keypad {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
+  /* 5 explicit rows: keys are placed by matrix cell, and the 2U ENTER spans two
+     of them. Auto-placement would silently close the hole left by the absent
+     cell (the ENTER stabiliser's half). */
+  grid-template-rows: repeat(5, auto);
   gap: 7px;
 }
 .key {
@@ -255,4 +259,12 @@ body {
   .face { font-size: 11px; letter-spacing: 0; }
   .leg { font-size: 6.5px; }
   .colophon { margin-top: 4px; font-size: 10px; gap: 4px 10px; }
+}
+
+/* ENTER is a 2U keycap: it spans two grid rows (placed inline by keypad.ts), so
+   it must not keep the 1U aspect ratio or the landscape fixed height. Declared
+   last so it beats the `.key` rules inside the media queries above. */
+.key--2u {
+  aspect-ratio: auto;
+  height: auto;
 }

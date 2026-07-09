@@ -239,7 +239,8 @@ function buildHelpOverlay() {
         <li><b>Backspace</b> BSP &nbsp; <b>.</b> decimal</li>
         <li><b>+ - * /</b> arithmetic</li>
         <li><b>&amp; | ^ ~</b> and / or / xor / not</li>
-        <li><b>H D O B</b> hex / dec / oct / bin &nbsp; <b>W</b> word size</li>
+        <li><b>H D O B</b> hex / dec / oct / bin &nbsp; <b>x</b> x&lt;&gt;y</li>
+        <li><b>ENTER</b> is 2U: <b>F</b>+Enter word size, <b>G</b>+Enter float</li>
         <li><b>Esc</b> cancel a pending shift &nbsp; <b>?</b> this help</li>
       </ul>
       <p>Click any key on the faceplate too. The f/face/g legends come straight

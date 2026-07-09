@@ -10,7 +10,7 @@
 //! gets back the number of bytes written (or the required length). The TS
 //! `Calcumaker` wrapper hides all of this.
 
-use calcumaker_core::keys::{COLS, PERSONALITIES, ROWS};
+use calcumaker_core::keys::{cell_has_switch, COLS, PERSONALITIES, ROWS};
 use calcumaker_core::seg7::{DIGITS_PER_ROW, DISPLAY_ROWS};
 use calcumaker_core::{keydoc, App, Key};
 
@@ -193,6 +193,15 @@ pub unsafe extern "C" fn cm_x_full(app: *mut App) -> usize {
 pub unsafe extern "C" fn cm_message(app: *mut App) -> usize {
     let Some(app) = app.as_ref() else { return 0 };
     put(app.message().unwrap_or(""))
+}
+
+/// Does this matrix cell physically carry a switch? The upper half of the 2U
+/// ENTER keycap does not (a stabiliser sits there), so the faceplate must draw
+/// no key at that cell and let ENTER span both rows. Engine is the source of
+/// truth — `keydoc::label` can't distinguish `Absent` from `Nop` (both "").
+#[no_mangle]
+pub extern "C" fn cm_cell_has_switch(row: usize, col: usize) -> u32 {
+    u32::from(row < ROWS && col < COLS && cell_has_switch(row, col))
 }
 
 /// Number of built-in personalities (16C / SCI / FIN). Indices into it are

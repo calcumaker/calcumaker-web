@@ -34,6 +34,7 @@ interface Exports {
   cm_set_keymap(app: number, idx: number): void;
   cm_keymap_name(app: number): number;
   cm_key_label(app: number, layer: number, row: number, col: number): number;
+  cm_cell_has_switch(row: number, col: number): number;
   cm_out_ptr(): number;
   // Fixed scratch buffer, used only for the 48 segment bytes.
   cm_scratch(): number;
@@ -102,6 +103,11 @@ export class Calcumaker {
   keymapName(): string { return this.readStr(this.ex.cm_keymap_name(this.app)); }
   keyLabel(layer: Layer, row: number, col: number): string {
     return this.readStr(this.ex.cm_key_label(this.app, layer, row, col));
+  }
+
+  /** False for the 2U ENTER's upper half — that cell has no switch. */
+  cellHasSwitch(row: number, col: number): boolean {
+    return this.ex.cm_cell_has_switch(row, col) !== 0;
   }
 
   /**

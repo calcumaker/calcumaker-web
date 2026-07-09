@@ -37,7 +37,56 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForSelector(".seg-row", { timeout: 10000 });
 
-ok("keypad has 50 keys", (await page.locator(".key").count()) === 50);
+// 49 keys: ENTER is a 2U keycap spanning rows 3-4 of col 5; its upper cell has
+// no switch (keys::ENTER_SPAN_CELL) so no keycap is drawn there.
+ok("keypad has 49 keys (2U ENTER)", (await page.locator(".key").count()) === 49);
+const enter2u = await page.evaluate(() => {
+  const at = (r, c) => document.querySelector(`.key[data-row="${r}"][data-col="${c}"]`);
+  const h = (e) => (e ? Math.round(e.getBoundingClientRect().height) : 0);
+  const enter = at(4, 5), oneU = at(4, 6);
+  return {
+    absentCellHasNoKey: at(3, 5) === null,
+    enterFace: enter?.querySelector(".face").textContent,
+    enterRow: enter ? getComputedStyle(enter).gridRow : "",
+    enterH: h(enter), oneUH: h(oneU),
+    gap: parseFloat(getComputedStyle(document.querySelector(".keypad")).gap),
+    base34: at(3, 4)?.querySelector(".face").textContent,
+    fEnter: enter?.querySelector(".leg-f").textContent,
+    gEnter: enter?.querySelector(".leg-g").textContent,
+  };
+});
+ok("no keycap at the ENTER stabiliser cell (3,5)", enter2u.absentCellHasNoKey);
+ok(`ENTER spans two grid rows (${enter2u.enterRow})`, /span 2/.test(enter2u.enterRow));
+ok(`ENTER is 2U tall (${enter2u.enterH} == 2x${enter2u.oneUH} + ${enter2u.gap} gap)`,
+  enter2u.enterH === enter2u.oneUH * 2 + enter2u.gap);
+ok(`x<>y moved to base (3,4) (${enter2u.base34})`, enter2u.base34 === "x<>y");
+ok(`f+ENTER is WSIZE, g+ENTER is FLOAT (${enter2u.fEnter}/${enter2u.gEnter})`,
+  enter2u.fEnter === "WSIZE" && enter2u.gEnter === "FLOAT");
+
+// The moved host key must actually drive the moved function: 3 ENTER 4 x -> 3.
+{
+  const sp = await browser.newPage({ viewport: { width: 1100, height: 820 } });
+  await sp.goto(base, { waitUntil: "networkidle" });
+  await sp.waitForSelector(".seg-row");
+  for (const k of ["3", "Enter", "4"]) await sp.keyboard.press(k);
+  await sp.keyboard.type("x"); // x<>y at its new cell (3,4)
+  await sp.waitForTimeout(150);
+  const v = (await sp.locator(".status-val").textContent())?.trim();
+  ok(`x<>y works from its new host key (3 ENTER 4 x -> ${JSON.stringify(v)})`, v === "x = 3");
+
+  // Landscape gives 1U keys a fixed height; the 2U key must still span two rows.
+  await sp.setViewportSize({ width: 844, height: 390 });
+  await sp.waitForTimeout(150);
+  const land = await sp.evaluate(() => {
+    const at = (r, c) => document.querySelector(`.key[data-row="${r}"][data-col="${c}"]`);
+    const h = (e) => Math.round(e.getBoundingClientRect().height);
+    return { enter: h(at(4, 5)), oneU: h(at(4, 6)),
+      gap: parseFloat(getComputedStyle(document.querySelector(".keypad")).gap) };
+  });
+  ok(`2U ENTER stays double-height in landscape (${land.enter} == 2x${land.oneU} + ${land.gap})`,
+    land.enter === land.oneU * 2 + land.gap);
+  await sp.close();
+}
 ok("display has 3 rows", (await page.locator(".seg-row").count()) === 3);
 ok("a key legend came from the engine (ENTER present)",
   (await page.locator(".face", { hasText: "ENTER" }).count()) >= 1);
