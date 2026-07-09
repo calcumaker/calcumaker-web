@@ -31,6 +31,8 @@ jobs:
 
       - name: Compare engine.lock with calcumaker HEAD
         id: cmp
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # public read; no cross-repo write
         run: |
           pinned="$(tr -d '[:space:]' < engine.lock)"
           head="$(git ls-remote https://github.com/calcumaker/calcumaker.git refs/heads/main | cut -f1)"
@@ -39,12 +41,36 @@ jobs:
             exit 1
           fi
           echo "pinned ${pinned:0:7} / head ${head:0:7}"
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+
           if [ "$pinned" = "$head" ]; then
             echo "engine.lock is current — nothing to do"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Only rebuild for paths the web build consumes. A hardware or docs
+          # commit moves calcumaker's HEAD but changes nothing we compile, and a
+          # pin bump for it would be pure churn. Same filter as notify-web.yml.
+          if ! files="$(gh api "repos/calcumaker/calcumaker/compare/${pinned}...${head}" --jq '.files[].filename')"; then
+            echo "::warning::could not diff ${pinned:0:7}...${head:0:7} — rebuilding to be safe"
+            files=""
+            relevant=yes
           else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "head=$head" >> "$GITHUB_OUTPUT"
+            relevant=no
+            if printf '%s\n' "$files" | grep -qE '^firmware/(calcumaker-core|gmp-mpfr-nostd)/|^firmware/calcumaker-matrix-fw/src/font\.rs$'; then
+              relevant=yes
+            fi
+          fi
+
+          if [ "$relevant" = yes ]; then
+            echo "engine changed — dispatching a build"
+            {
+              echo "changed=true"
+              echo "head=$head"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "calcumaker moved, but nothing the web build compiles:"
+            printf '%s\n' "$files" | sed 's/^/  /'
           fi
 
       # release-bundle builds this SHA, runs the gates, and commits the
